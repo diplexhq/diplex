@@ -1,0 +1,25 @@
+#!/bin/bash
+# DIplex pre-commit hook
+# Install: cp .githooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
+
+if [ -z "$STAGED_GO_FILES" ]; then
+    exit 0
+fi
+
+# ── Lint ──
+echo "▸ golangci-lint"
+golangci-lint run --timeout=5m ./...
+
+# ── Vet ──
+echo "▸ go vet"
+go vet ./...
+
+# ── Build ──
+echo "▸ go build"
+go build ./...
+
+echo "✓ pre-commit passed"

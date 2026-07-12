@@ -1,0 +1,44 @@
+{{ define "provider" }}
+
+type {{ .Name }} struct {
+{{- range .Providers }}
+	{{ .Field }} func() {{ .Result }}
+{{- end }}
+}
+
+func New{{ .Name }}() *{{ .Name }} {
+	di := &{{ .Name }}{}
+{{- range .Providers }}
+
+	di.{{ .Field }} = sync.OnceValue(func() {{ .Result }} {
+{{- if .Error }}
+		d, err := {{ .Call }}({{ template "args" . }})
+		if err != nil {
+			panic(err.Error())
+		}
+		return d
+{{- else }}
+		return {{ .Call }}({{ template "args" . }})
+{{- end }}
+	})
+{{- end }}
+
+	return di
+}
+{{ end }}
+
+{{ define "args" }}
+{{- if gt (len .Args) 0 -}}
+	{{- range .Args }}
+		{{- if eq .CollectionType "slice" }}
+			{{ .Type }}{
+				{{- range .Providers }}
+				di.{{ . }}(),
+				{{- end }}
+			},
+		{{- else }}
+			di.{{ index .Providers 0 }}(),
+		{{- end }}
+	{{- end }}
+		{{ else -}}{{- end -}}
+{{- end }}

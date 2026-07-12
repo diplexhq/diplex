@@ -1,0 +1,14 @@
+{{- range .Facade }}
+
+func (di *{{ $.Name }}) {{ .Name }}() {{ .Result }} {
+{{- if eq .Type "slice" }}
+	return {{ .Result }}{
+		{{- range .Providers }}
+		di.{{ . }}(),
+		{{- end }}
+	}
+{{- else }}
+	return di.{{ index .Providers 0 }}()
+{{- end }}
+}
+{{- end }}

@@ -1,0 +1,50 @@
+# https://github.com/golangci/golangci-lint/blob/main/.golangci.reference.yml
+version: "2"
+
+linters:
+  # Default linters set: standard (govet, staticcheck, ineffassign, unused, errcheck)
+  default: standard
+
+  enable:
+    # ── security ──
+    - gosec
+
+    # ── bugs ──
+    - perfsprint
+
+    # ── performance ──
+    - prealloc
+
+    # ── style ──
+    - misspell
+    - whitespace
+    - wsl_v5
+
+  exclusions:
+    rules:
+      - path: internal/tests
+        text: G101
+        linters:
+          - gosec
+      - path: internal/tests
+        text: G304
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofumpt        # stricter formatting
+    - gci            # import grouping and ordering
+
+  settings:
+    gofumpt:
+      extra-rules: true
+    gci:
+      sections:
+        - standard
+        - dot
+        - default
+      custom-order: true
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 5

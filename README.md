@@ -1,10 +1,10 @@
-# Gendior — генератор DI-контейнера для Go
+# DIplex — генератор DI-контейнера для Go
 
 Утилита для сканирования Go-кода и генерации высокоэффективного DI-контейнера на этапе компиляции. Без runtime reflection — сгенерированный код не уступает ручному внедрению зависимостей.
 
 ---
 
-# Gendior — Go DI Container Generator
+# DIplex — Go DI Container Generator
 
 Utility for scanning Go code and generating a high-performance DI container at compile time. No runtime reflection — generated code equals manual dependency injection.
 
@@ -12,7 +12,7 @@ Utility for scanning Go code and generating a high-performance DI container at c
 
 ```bash
 # Из корня целевого проекта / From target project root
-go tool gendior
+go tool diplex
 ```
 
 ## Documentation / Документация
@@ -35,4 +35,4 @@ go tool gendior
 
 - Только публичные типы (с заглавной буквы) / Only public types (capitalized)
 - Один конструктор на тип / One constructor per type
-- Без поддержки дженериков / No generics support
+- Ограниченная поддержка дженериков / Limited generics support (concrete instantiations only)

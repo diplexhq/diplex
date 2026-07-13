@@ -65,7 +65,7 @@ func (fp *Parser) Parse(sourceFiles domain.SourceFiles) domain.ParsedData {
 	for range 4 {
 		g.Go(func() {
 			for sourceFile := range sourceFiles {
-				fp.log.Info("parsing source", "file", sourceFile)
+				fp.log.Debug("parsing source", "file", sourceFile)
 				fp.parseFile(sourceFile, state)
 			}
 		})

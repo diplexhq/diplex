@@ -21,5 +21,5 @@ func New(cfg *config.Config) (Logger, error) {
 		level = slog.LevelInfo
 	}
 
-	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})), nil
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})), nil
 }

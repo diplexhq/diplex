@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PATH := $(shell go env GOPATH)/bin:$(PATH)
 export PATH
-.PHONY: help fmt lint vet fix tidy build test clean install-hooks bench
+.PHONY: help fmt lint vet fix tidy build test clean install-hooks bench gen
 
 # ── Default ──
 help: ## Show this help
@@ -37,6 +37,13 @@ test: ## Run tests
 bench: ## Run benchmarks
 	go test -bench=. ./internal/tests -count=5
 
+# ── Generation ──
+gen: ## Run diplex on itself and generate test DI
+	go run .
+
+go-run-tests: ## Generate test DI
+	go run . -scan internal/tests -di internal/tests/di -out internal/tests/generated/diplex
+
 # ── All-in-one ──
 check: fmt fix tidy lint vet build ## Format, fix, tidy, lint, vet, build
 
@@ -44,4 +51,3 @@ check: fmt fix tidy lint vet build ## Format, fix, tidy, lint, vet, build
 install-hooks: ## Install .githooks as git hooks
 	cp .githooks/* .git/hooks/ 2>/dev/null || true
 	chmod +x .git/hooks/* 2>/dev/null || true
-

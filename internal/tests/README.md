@@ -2,12 +2,6 @@
 
 Full dependency matrix covering all supported DI scenarios.
 
-Run self-validation:
-```bash
-go run . -scan internal/tests -di internal/tests/di -out internal/tests/generated/diplex
-go build ./internal/tests/generated/diplex/
-```
-
 ## Coverage
 
 | # | Scenario | File |

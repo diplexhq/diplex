@@ -117,6 +117,7 @@ func TestIsIdentChar(t *testing.T) {
 		{"comma", ',', false},
 		{"star", '*', false},
 		{"tilde", '~', false},
+		{"hyphen", '-', true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -218,6 +219,8 @@ func TestSanitizeIdent(t *testing.T) {
 		{"multiple spaces", "  hello  world  ", "helloWorld"},
 		{"with slash", "github.com/user/pkg", "githubComUserPkg"},
 		{"with dots", "pkg.Type", "pkgType"},
+		{"with hyphen", "my-package", "myPackage"},
+		{"path with hyphen", "my-package/sub", "myPackageSub"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

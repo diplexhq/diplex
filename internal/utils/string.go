@@ -36,11 +36,11 @@ func ReplaceTokens(t string, replacements map[string]string) string {
 }
 
 // IsIdentChar reports whether a byte is valid inside a qualified Go identifier.
-// This matches [\w./]+ — letters, digits, underscore, dot (package qualifier),
-// and slash (module path separator).
+// This matches [\w./-]+ — letters, digits, underscore, dot (package qualifier),
+// slash (module path separator), and hyphen (package path separator).
 func IsIdentChar(b byte) bool {
 	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') ||
-		(b >= '0' && b <= '9') || b == '_' || b == '.' || b == '/'
+		(b >= '0' && b <= '9') || b == '_' || b == '.' || b == '/' || b == '-'
 }
 
 // IsIdentBaseChar reports whether b is a valid Go identifier character (letter, digit, underscore).

@@ -62,9 +62,11 @@ func (dig *DiGenerator) renderProvider(out io.Writer, name string, tmplData tmpl
 	tmpl := utils.Must(template.New("provider").Parse(providerTmpl))
 	utils.NoErr(tmpl.Execute(out, struct {
 		Name      string
+		FacadePkg string
 		Providers []tmplDataProvider
 	}{
 		Name:      name,
+		FacadePkg: tmplData.FacadePkg,
 		Providers: tmplData.providers,
 	}))
 }

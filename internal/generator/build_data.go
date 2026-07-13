@@ -90,6 +90,7 @@ type tmplData struct {
 	imports   []string
 	providers []tmplDataProvider
 	facade    []tmplDataFacadeMethod
+	FacadePkg string
 }
 
 type buildData struct {
@@ -186,9 +187,16 @@ func (dig *DiGenerator) buildDataPkg(data *buildData) {
 		}
 	}
 
+	// add facade package (strip "PackageName.InterfaceName" → "PackageName")
+	facadePkg := string(data.facadeID)
+	if dot := strings.LastIndex(facadePkg, "."); dot > 0 {
+		facadePkg = facadePkg[:dot]
+	}
+	local = append(local, facadePkg)
+
 	used := make(map[string]struct{})
 
-	data.tmplData.imports = make([]string, 0, len(standard)+len(local)+len(others)+2)
+	data.tmplData.imports = make([]string, 0, len(standard)+len(local)+len(others)+3)
 	for _, pkgs := range [][]string{standard, others, local} {
 		if len(pkgs) == 0 {
 			continue
@@ -211,6 +219,8 @@ func (dig *DiGenerator) buildDataPkg(data *buildData) {
 			}
 		}
 	}
+
+	data.tmplData.FacadePkg = data.pkgAlias[facadePkg] + "." + data.facadeID.LocalName()
 }
 
 func (dig *DiGenerator) buildDataProvider(data *buildData) {

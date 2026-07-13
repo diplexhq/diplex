@@ -6,7 +6,7 @@ type {{ .Name }} struct {
 {{- end }}
 }
 
-func New{{ .Name }}() *{{ .Name }} {
+func New{{ .Name }}() {{ .FacadePkg }} {
 	di := &{{ .Name }}{}
 {{- range .Providers }}
 

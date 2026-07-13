@@ -31,7 +31,7 @@ func (s *stubConfig) Module() string              { return s.module }
 
 // expectedHash — SHA-256 hash of the generated di.go.
 // To update after generator changes: `sha256sum internal/tests/generated/diplex/di.go`.
-const expectedHash = "3ee648a4947e175dce1c495f96353a4035ff83cbc847a35c6b3d21a269d92107"
+const expectedHash = "7e337b130da9501ae6142e64b0aa274aa255ee045c2814e7d1e17c85883a8d0a"
 
 // TestDI — full DI pipeline: scan → parse → resolve → generate + hash verification.
 // If generation logic changes, the test fails — update expectedHash constant.

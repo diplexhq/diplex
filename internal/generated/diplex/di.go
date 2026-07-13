@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/diplexhq/diplex/internal/config"
+	"github.com/diplexhq/diplex/internal/di"
 	"github.com/diplexhq/diplex/internal/generator"
 	"github.com/diplexhq/diplex/internal/parser"
 	"github.com/diplexhq/diplex/internal/resolver"
@@ -45,7 +46,7 @@ type DI struct {
 	utilsLoggerNew func() utilsLogger.Logger
 }
 
-func NewDI() *DI {
+func NewDI() di.DI {
 	di := &DI{}
 
 	di.configNewConfig = sync.OnceValue(func() *config.Config {

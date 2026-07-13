@@ -7,6 +7,7 @@ import (
 	"github.com/diplexhq/diplex/internal/tests/cache"
 	"github.com/diplexhq/diplex/internal/tests/callback"
 	"github.com/diplexhq/diplex/internal/tests/config"
+	"github.com/diplexhq/diplex/internal/tests/di"
 	"github.com/diplexhq/diplex/internal/tests/entity"
 	"github.com/diplexhq/diplex/internal/tests/event"
 	"github.com/diplexhq/diplex/internal/tests/handler"
@@ -68,7 +69,7 @@ type DI struct {
 	metricsNewTimeout func() metrics.Timeout
 }
 
-func NewDI() *DI {
+func NewDI() di.DI {
 	di := &DI{}
 
 	di.cacheNewMemStorageCacheCacheEntryStringInt = sync.OnceValue(func() *cache.MemStorage[int, cache.CacheEntry[string]] {

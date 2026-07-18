@@ -1,4 +1,3 @@
-// Package metrics — named type dependencies (Port, Timeout) и error-returning constructor (#28).
 package metrics
 
 import (

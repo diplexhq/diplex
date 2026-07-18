@@ -95,30 +95,52 @@ type tmplData struct {
 
 type buildData struct {
 	facadeID     domain.InterfaceID
-	providerUse  map[string]struct{}
+	providerUse  map[domain.ProviderID]struct{}
 	pkgAlias     map[string]string
 	providerList []*domain.Provider
 	resolvedData domain.ResolvedData
 	tmplData     tmplData
 }
 
-func (dig *DiGenerator) newBuildData(facadeID domain.InterfaceID, resolvedData domain.ResolvedData) *buildData {
+func (dig *Generator) newBuildData(facadeID domain.InterfaceID, resolvedData domain.ResolvedData) *buildData {
 	return &buildData{
 		facadeID:     facadeID,
-		providerUse:  make(map[string]struct{}),
+		providerUse:  make(map[domain.ProviderID]struct{}),
 		pkgAlias:     make(map[string]string),
 		resolvedData: resolvedData,
+		providerList: make([]*domain.Provider, 0, len(resolvedData.ResolvedProviders)),
 	}
 }
 
-func (dig *DiGenerator) buildData(facadeID domain.InterfaceID, resolvedData domain.ResolvedData) *buildData {
+func (dig *Generator) buildData(facadeID domain.InterfaceID, resolvedData domain.ResolvedData) *buildData {
 	data := dig.newBuildData(facadeID, resolvedData)
 
 	dig.addPkg(data, "sync")
 
-	for _, providers := range resolvedData.Providers {
-		for _, provider := range providers.Providers {
-			dig.addProvider(data, provider)
+	queue := make([]*domain.Provider, 0, 128)
+
+	for _, method := range resolvedData.ResolvedFacades[facadeID] {
+		if _, ok := data.providerUse[method.Provider.ID]; ok {
+			continue
+		}
+
+		queue = append(queue, method.Provider)
+		dig.addProvider(data, method.Provider)
+	}
+
+	for len(queue) > 0 {
+		provider := queue[len(queue)-1]
+		queue = queue[:len(queue)-1]
+
+		for _, collection := range resolvedData.ResolvedProviders[provider.ID].ArgumentProviders {
+			for _, p := range collection.Providers {
+				if _, ok := data.providerUse[p.ID]; ok {
+					continue
+				}
+
+				queue = append(queue, p)
+				dig.addProvider(data, p)
+			}
 		}
 	}
 
@@ -129,23 +151,19 @@ func (dig *DiGenerator) buildData(facadeID domain.InterfaceID, resolvedData doma
 	return data
 }
 
-func (dig *DiGenerator) addProvider(d *buildData, provider *domain.Provider) {
-	if _, ok := d.providerUse[provider.Id()]; ok {
-		return
-	}
-
-	d.providerUse[provider.Id()] = struct{}{}
+func (dig *Generator) addProvider(d *buildData, provider *domain.Provider) {
+	d.providerUse[provider.ID] = struct{}{}
 	d.providerList = append(d.providerList, provider)
 	d.pkgAlias[provider.Pkg] = provider.Pkg
 	dig.addPkgsFromParam(d, provider.Result)
 	dig.addPkgsFromParam(d, domain.Parameter(provider.Name))
 }
 
-func (dig *DiGenerator) addPkg(d *buildData, pkg string) {
+func (dig *Generator) addPkg(d *buildData, pkg string) {
 	d.pkgAlias[pkg] = pkg
 }
 
-func (dig *DiGenerator) addPkgsFromParam(d *buildData, param domain.Parameter) {
+func (dig *Generator) addPkgsFromParam(d *buildData, param domain.Parameter) {
 	for i := 0; i < len(param); {
 		start := i
 		dot := i
@@ -168,7 +186,7 @@ func (dig *DiGenerator) addPkgsFromParam(d *buildData, param domain.Parameter) {
 	}
 }
 
-func (dig *DiGenerator) buildDataPkg(data *buildData) {
+func (dig *Generator) buildDataPkg(data *buildData) {
 	var (
 		standard []string
 		others   []string
@@ -192,6 +210,7 @@ func (dig *DiGenerator) buildDataPkg(data *buildData) {
 	if dot := strings.LastIndex(facadePkg, "."); dot > 0 {
 		facadePkg = facadePkg[:dot]
 	}
+
 	local = append(local, facadePkg)
 
 	used := make(map[string]struct{})
@@ -223,13 +242,9 @@ func (dig *DiGenerator) buildDataPkg(data *buildData) {
 	data.tmplData.FacadePkg = data.pkgAlias[facadePkg] + "." + data.facadeID.LocalName()
 }
 
-func (dig *DiGenerator) buildDataProvider(data *buildData) {
+func (dig *Generator) buildDataProvider(data *buildData) {
 	sort.Slice(data.providerList, func(i, j int) bool {
-		if data.providerList[i].Pkg == data.providerList[j].Pkg {
-			return data.providerList[i].Name < data.providerList[j].Name
-		}
-
-		return data.providerList[i].Pkg < data.providerList[j].Pkg
+		return data.providerList[i].ID < data.providerList[j].ID
 	})
 
 	data.tmplData.providers = make([]tmplDataProvider, 0, len(data.providerList))
@@ -239,32 +254,31 @@ func (dig *DiGenerator) buildDataProvider(data *buildData) {
 		data.tmplData.providers = append(data.tmplData.providers, tmplDataProvider{
 			Field:  utils.SanitizeIdent(pkgAlias + name),
 			Call:   pkgAlias + "." + name,
-			Args:   dig.buildDataProviderArgs(data, provider.Arguments),
+			Args:   dig.buildDataProviderArgs(data, provider.Arguments, data.resolvedData.ResolvedProviders[provider.ID].ArgumentProviders),
 			Error:  provider.Error,
 			Result: dig.replacePkgAlias(data.pkgAlias, string(provider.Result)),
 		})
 	}
 }
 
-func (dig *DiGenerator) buildDataProviderArgs(data *buildData, arguments []domain.Parameter) []tmplDataProviderArg {
+func (dig *Generator) buildDataProviderArgs(data *buildData, arguments []domain.Parameter, argumentProviders []domain.ProviderCollection) []tmplDataProviderArg {
 	if len(arguments) == 0 {
 		return nil
 	}
 
 	res := make([]tmplDataProviderArg, 0, len(arguments))
-	for _, arg := range arguments {
-		providers := data.resolvedData.Providers[arg]
+	for i, arg := range arguments {
 		res = append(res, tmplDataProviderArg{
 			Type:           dig.replacePkgAlias(data.pkgAlias, string(arg)),
-			CollectionType: providers.CollectionType,
-			Providers:      dig.buildDataTmplProvider(data, providers),
+			CollectionType: argumentProviders[i].CollectionType,
+			Providers:      dig.buildDataTmplProvider(data, argumentProviders[i]),
 		})
 	}
 
 	return res
 }
 
-func (dig *DiGenerator) replacePkgAlias(pkgAlias map[string]string, str string) string {
+func (dig *Generator) replacePkgAlias(pkgAlias map[string]string, str string) string {
 	var buf strings.Builder
 	buf.Grow(len(str))
 
@@ -298,18 +312,20 @@ func (dig *DiGenerator) replacePkgAlias(pkgAlias map[string]string, str string) 
 	return buf.String()
 }
 
-func (dig *DiGenerator) buildDataFacade(data *buildData) {
-	methods := data.resolvedData.Facades[data.facadeID].Methods
+func (dig *Generator) buildDataFacade(data *buildData) {
+	methods := data.resolvedData.ResolvedFacades[data.facadeID]
 
 	data.tmplData.facade = make([]tmplDataFacadeMethod, 0, len(methods))
 	for name, method := range methods {
-		resultArg := method.Results[0]
-		providers := data.resolvedData.Providers[resultArg]
+		providers := domain.ProviderCollection{
+			Providers: []*domain.Provider{method.Provider},
+		}
+
 		data.tmplData.facade = append(data.tmplData.facade, tmplDataFacadeMethod{
 			Name:      string(name),
 			Type:      providers.CollectionType,
 			Providers: dig.buildDataTmplProvider(data, providers),
-			Result:    dig.replacePkgAlias(data.pkgAlias, string(resultArg)),
+			Result:    dig.replacePkgAlias(data.pkgAlias, string(method.Result)),
 		})
 	}
 
@@ -318,7 +334,7 @@ func (dig *DiGenerator) buildDataFacade(data *buildData) {
 	})
 }
 
-func (dig *DiGenerator) buildDataTmplProvider(data *buildData, providers domain.ProviderCollection) []string {
+func (dig *Generator) buildDataTmplProvider(data *buildData, providers domain.ProviderCollection) []string {
 	res := make([]string, 0, len(providers.Providers))
 	for _, provider := range providers.Providers {
 		field := data.pkgAlias[provider.Pkg] + dig.replacePkgAlias(data.pkgAlias, provider.Name)

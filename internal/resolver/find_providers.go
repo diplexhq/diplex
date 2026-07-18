@@ -21,6 +21,10 @@ func (res *Resolver) findProviderCollection(arg domain.Parameter, parsedData dom
 				panic(fmt.Sprintf("cannot generate DI: nested collection for %s is not supported", arg))
 			}
 
+			sort.Slice(providers.Providers, func(i, j int) bool {
+				return providers.Providers[i].ID < providers.Providers[j].ID
+			})
+
 			return domain.ProviderCollection{
 				CollectionType: "slice",
 				Providers:      providers.Providers,
@@ -29,14 +33,6 @@ func (res *Resolver) findProviderCollection(arg domain.Parameter, parsedData dom
 
 		panic(fmt.Sprintf("cannot generate DI: no providers for %s", arg))
 	}
-
-	sort.Slice(providers.Providers, func(i, j int) bool {
-		if providers.Providers[i].Pkg == providers.Providers[j].Pkg {
-			return providers.Providers[i].Name < providers.Providers[j].Name
-		}
-
-		return providers.Providers[i].Pkg < providers.Providers[j].Pkg
-	})
 
 	return providers
 }
@@ -123,9 +119,9 @@ func (res *Resolver) resolveProvider(provider *domain.Provider, constraints map[
 	for _, combination := range combinations {
 		result := utils.ReplaceTokens(string(provider.Result), combination)
 
-		arguments := make([]domain.Parameter, len(provider.Arguments))
-		for i, a := range provider.Arguments {
-			arguments[i] = domain.Parameter(utils.ReplaceTokens(string(a), combination))
+		arguments := make([]domain.Parameter, 0, len(provider.Arguments))
+		for _, a := range provider.Arguments {
+			arguments = append(arguments, domain.Parameter(utils.ReplaceTokens(string(a), combination)))
 		}
 
 		name := utils.ReplaceTokens(provider.Name, combination)
@@ -136,12 +132,15 @@ func (res *Resolver) resolveProvider(provider *domain.Provider, constraints map[
 		}
 
 		providers = append(providers, &domain.Provider{
-			Pkg:       provider.Pkg,
-			Name:      name,
-			Arguments: arguments,
-			Result:    domain.Parameter(result),
-			Generic:   nil,
-			Error:     provider.Error,
+			ID:         domain.ProviderID(provider.Pkg + "." + name),
+			Pkg:        provider.Pkg,
+			Name:       name,
+			Arguments:  arguments,
+			ArgNames:   provider.ArgNames,
+			Result:     domain.Parameter(result),
+			ResultName: provider.ResultName,
+			Generic:    nil,
+			Error:      provider.Error,
 		})
 	}
 

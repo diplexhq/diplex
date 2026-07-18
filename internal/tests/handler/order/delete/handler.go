@@ -1,15 +1,13 @@
-// Package orderdelete — узкий интерфейс для теста narrow interface per consumer.
 package delete
 
 import (
 	"net/http"
 
-	"github.com/diplexhq/diplex/internal/tests/entity"
 	"github.com/diplexhq/diplex/internal/tests/handler"
 )
 
 type Repo interface {
-	Delete(o entity.Order) error
+	Delete(int)
 }
 
 type Handler struct {
@@ -17,8 +15,8 @@ type Handler struct {
 	repo Repo
 }
 
-func New(repo Repo) *Handler {
-	return &Handler{Base: handler.NewBase("/orders/{id}"), repo: repo}
+func New(orderRepo Repo) *Handler {
+	return &Handler{Base: handler.NewBase("/orders/{id}"), repo: orderRepo}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

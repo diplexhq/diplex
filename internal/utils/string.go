@@ -15,10 +15,10 @@ func ToSnakeCase(str string) string {
 			buf.WriteByte('_')
 		}
 
-		buf.WriteByte(toLower(str[i]))
+		buf.WriteByte(ToLower(str[i]))
 	}
 
-	buf.WriteByte(toLower(str[len(str)-1]))
+	buf.WriteByte(ToLower(str[len(str)-1]))
 
 	return buf.String()
 }
@@ -81,7 +81,7 @@ func SanitizeIdent(s string) string {
 		seg := s[start:i]
 
 		if buf.Len() == 0 {
-			buf.WriteByte(toLower(seg[0]))
+			buf.WriteByte(ToLower(seg[0]))
 		} else {
 			buf.WriteByte(toUpper(seg[0]))
 		}
@@ -292,8 +292,8 @@ func resolveReplacement(s string, replacements map[string]string, inDeep bool, m
 	return buf.String()
 }
 
-// toLower lowercases a single byte to its lowercase equivalent.
-func toLower(c byte) byte {
+// ToLower lowercases a single byte to its lowercase equivalent.
+func ToLower(c byte) byte {
 	if c >= 'A' && c <= 'Z' {
 		return c + 'a' - 'A'
 	}

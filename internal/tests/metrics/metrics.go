@@ -1,4 +1,3 @@
-// Package metrics — named primitive types (Port, Timeout) и error-returning constructor для тестирования.
 package metrics
 
 import (
@@ -24,9 +23,13 @@ type HealthChecker struct {
 	port Port
 }
 
-func NewHealthChecker(cfg config.DBConfig, port Port) (*HealthChecker, error) {
-	if cfg.Dsn == "" {
-		return nil, errors.New("metrics: DSN is empty")
+func NewHealthChecker(dbDsn, redisDsn config.Dsn, port Port) (*HealthChecker, error) {
+	if dbDsn == "" {
+		return nil, errors.New("metrics: db DSN is empty")
+	}
+
+	if redisDsn == "" {
+		return nil, errors.New("metrics: redis DSN is empty")
 	}
 
 	return &HealthChecker{port: port}, nil
@@ -40,17 +43,7 @@ type FactoryProvider struct {
 	makeFunc HandlerFunc
 }
 
-func NewFactoryProvider(fn HandlerFunc) *FactoryProvider {
-	return &FactoryProvider{makeFunc: fn}
-}
-
 type HandlerFunc func(name string) string
-
-func NewHandlerFunc() HandlerFunc {
-	return func(name string) string {
-		return "factory:" + name
-	}
-}
 
 func (f *FactoryProvider) Make() HandlerFunc {
 	return f.makeFunc

@@ -41,8 +41,8 @@ bench: ## Run benchmarks
 gen: ## Run diplex on itself and generate test DI
 	go run .
 
-go-run-tests: ## Generate test DI
-	go run . -scan internal/tests -di internal/tests/di -out internal/tests/generated/diplex
+gen-tests-di: ## Generate test DI
+	go run . -scan internal/tests -di internal/tests/di -out internal/tests/generated/diplex -skip '(internal\/generated\/diplex|_test\.go|_mock\.go)$$'
 
 # ── All-in-one ──
 check: fmt fix tidy lint vet build ## Format, fix, tidy, lint, vet, build

@@ -17,7 +17,7 @@ func (di *DI) Config() *config.Config {
 	return di.configNewConfig()
 }
 
-func (di *DI) Generator() *generator.DiGenerator {
+func (di *DI) Generator() *generator.Generator {
 	return di.generatorNew()
 }
 
@@ -39,7 +39,7 @@ func (di *DI) Scanner() *scanner.Scanner {
 
 type DI struct {
 	configNewConfig func() *config.Config
-	generatorNew func() *generator.DiGenerator
+	generatorNew func() *generator.Generator
 	parserNew func() *parser.Parser
 	resolverNew func() *resolver.Resolver
 	scannerNew func() *scanner.Scanner
@@ -53,7 +53,7 @@ func NewDI() di.DI {
 		return config.NewConfig()
 	})
 
-	di.generatorNew = sync.OnceValue(func() *generator.DiGenerator {
+	di.generatorNew = sync.OnceValue(func() *generator.Generator {
 		return generator.New(
 			di.utilsLoggerNew(),
 			di.configNewConfig(),

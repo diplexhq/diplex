@@ -18,5 +18,5 @@ type DI interface {
 	Scanner() *scanner.Scanner
 	Parser() *parser.Parser
 	Resolver() *resolver.Resolver
-	Generator() *generator.DiGenerator
+	Generator() *generator.Generator
 }

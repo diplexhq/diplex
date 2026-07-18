@@ -11,7 +11,7 @@ import (
 type User = entity.User
 
 type Repo interface {
-	Create(u User) (User, error)
+	Set(string, User)
 }
 
 type Handler struct {
@@ -19,8 +19,8 @@ type Handler struct {
 	repo Repo
 }
 
-func New(repo Repo) *Handler {
-	return &Handler{Base: handler.NewBase("/users"), repo: repo}
+func New(userRepo Repo) *Handler {
+	return &Handler{Base: handler.NewBase("/users"), repo: userRepo}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

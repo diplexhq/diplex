@@ -1,5 +1,4 @@
-// Package callback — named function type для тестирования function type dependency (#29).
-package callback
+package event
 
 type HandlerFunc func(path string) string
 

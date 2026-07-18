@@ -31,7 +31,7 @@ func (s *stubConfig) Module() string              { return s.module }
 
 // expectedHash — SHA-256 hash of the generated di.go.
 // To update after generator changes: `sha256sum internal/tests/generated/diplex/di.go`.
-const expectedHash = "7e337b130da9501ae6142e64b0aa274aa255ee045c2814e7d1e17c85883a8d0a"
+const expectedHash = "50840a4e9f82bf728c17d42040fee669a22cb894b8e7d688f27ea3eada3bbb0a"
 
 // TestDI — full DI pipeline: scan → parse → resolve → generate + hash verification.
 // If generation logic changes, the test fails — update expectedHash constant.
@@ -54,11 +54,11 @@ func TestDI(t *testing.T) {
 
 	files := scanner.New(log, cfg).Scan()
 
-	ir := parser.New(log, cfg).Parse(files)
+	parsedData := parser.New(log, cfg).Parse(files)
 
-	res := resolver.New(cfg).Resolve(ir)
+	resolvedData := resolver.New(cfg).Resolve(parsedData)
 
-	generator.New(log, cfg).Generate(res)
+	generator.New(log, cfg).Generate(resolvedData)
 
 	// Verify generated di.go hash.
 	generated := filepath.Join(cfg.outputDir, "di.go")

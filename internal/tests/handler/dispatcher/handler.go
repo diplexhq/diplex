@@ -1,22 +1,28 @@
-// Package dispatcher — function type, channel type и ComplexEvent interface combined (#29, #30, #31).
 package dispatcher
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/diplexhq/diplex/internal/tests/callback"
 	"github.com/diplexhq/diplex/internal/tests/event"
 	"github.com/diplexhq/diplex/internal/tests/handler"
 )
 
-type Handler struct {
-	handler.Base
-	fn      callback.HandlerFunc
-	ch      event.NotifyChan
-	complex event.ComplexEvent
+// ComplexEventWithComposite — narrow interface at point of use with any and rune composite types.
+type ComplexEventWithComposite interface {
+	StreamOutputs(context.Context) chan<- event.Event
+	StreamInputs(context.Context) <-chan event.ComplexResult
+	Process(context.Context, []any, map[string][]rune) (map[byte][]any, []event.PayloadEntry)
 }
 
-func New(fn callback.HandlerFunc, ch event.NotifyChan, complex event.ComplexEvent) *Handler {
+type Handler struct {
+	handler.Base
+	fn      event.HandlerFunc
+	ch      event.NotifyChan
+	complex ComplexEventWithComposite
+}
+
+func New(fn event.HandlerFunc, ch event.NotifyChan, complex ComplexEventWithComposite) *Handler {
 	return &Handler{
 		Base:    handler.NewBase("/dispatch"),
 		fn:      fn,
@@ -27,8 +33,6 @@ func New(fn callback.HandlerFunc, ch event.NotifyChan, complex event.ComplexEven
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.ch <- event.Event{Type: "dispatch", Payload: h.fn("/dispatch")}
-
-	_ = h.complex.Tags()
 
 	w.WriteHeader(http.StatusOK)
 }

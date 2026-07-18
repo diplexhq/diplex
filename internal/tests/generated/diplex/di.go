@@ -4,118 +4,109 @@ package diplex
 import (
 	"sync"
 
-	"github.com/diplexhq/diplex/internal/tests/cache"
-	"github.com/diplexhq/diplex/internal/tests/callback"
 	"github.com/diplexhq/diplex/internal/tests/config"
 	"github.com/diplexhq/diplex/internal/tests/di"
 	"github.com/diplexhq/diplex/internal/tests/entity"
 	"github.com/diplexhq/diplex/internal/tests/event"
 	"github.com/diplexhq/diplex/internal/tests/handler"
 	handlerAdminStats "github.com/diplexhq/diplex/internal/tests/handler/admin/stats"
-	handlerCache "github.com/diplexhq/diplex/internal/tests/handler/cache"
 	handlerDispatcher "github.com/diplexhq/diplex/internal/tests/handler/dispatcher"
 	handlerMetrics "github.com/diplexhq/diplex/internal/tests/handler/metrics"
 	handlerOrderCreate "github.com/diplexhq/diplex/internal/tests/handler/order/create"
 	handlerOrderDelete "github.com/diplexhq/diplex/internal/tests/handler/order/delete"
-	handlerOrderDetail "github.com/diplexhq/diplex/internal/tests/handler/order/detail"
-	handlerOrderFind "github.com/diplexhq/diplex/internal/tests/handler/order/find"
 	handlerOrderGet "github.com/diplexhq/diplex/internal/tests/handler/order/get"
 	handlerOrderUpdate "github.com/diplexhq/diplex/internal/tests/handler/order/update"
 	handlerUserCreate "github.com/diplexhq/diplex/internal/tests/handler/user/create"
 	handlerUserDelete "github.com/diplexhq/diplex/internal/tests/handler/user/delete"
-	handlerUserFind "github.com/diplexhq/diplex/internal/tests/handler/user/find"
 	handlerUserGet "github.com/diplexhq/diplex/internal/tests/handler/user/get"
-	handlerUserLookup "github.com/diplexhq/diplex/internal/tests/handler/user/lookup"
 	handlerUserUpdate "github.com/diplexhq/diplex/internal/tests/handler/user/update"
 	"github.com/diplexhq/diplex/internal/tests/logger"
 	"github.com/diplexhq/diplex/internal/tests/metrics"
+	"github.com/diplexhq/diplex/internal/tests/storage"
 )
 
 func (di *DI) HttpServer() *handler.HTTPServer {
 	return di.handlerNewHTTPServer()
 }
 
+func (di *DI) Logger() logger.Logger {
+	return di.loggerNewLogger()
+}
+
 type DI struct {
-	cacheNewMemStorageCacheCacheEntryStringInt func() *cache.MemStorage[int, cache.CacheEntry[string]]
-	cacheNewIntString func() *cache.Cache[int, string]
-	callbackNewHandlerFunc func() callback.HandlerFunc
 	configNewConfig func() *config.Config
-	configNewDBConfig func() config.DBConfig
-	entityNewRepoEntityOrder func() *entity.Repo[entity.Order]
-	entityNewSluggedRepo func() *entity.SluggedRepo
-	entityNewYaRepo func() *entity.Repo[entity.User]
+	configNewDbDsn func() config.Dsn
+	configNewRedisDsn func() config.Dsn
+	entityNewOrderRepo func() *entity.OrderRepo
+	entityNewUserRepo func() *entity.UserRepo
 	eventNewComplexEvent func() event.ComplexEvent
+	eventNewHandlerFunc func() event.HandlerFunc
 	eventNewNotifyChan func() event.NotifyChan
 	handlerNewHTTPServer func() *handler.HTTPServer
 	handlerAdminStatsNew func() *handlerAdminStats.Handler
-	handlerCacheNew func() *handlerCache.Handler
 	handlerDispatcherNew func() *handlerDispatcher.Handler
 	handlerMetricsNew func() *handlerMetrics.Handler
 	handlerOrderCreateNew func() *handlerOrderCreate.Handler
 	handlerOrderDeleteNew func() *handlerOrderDelete.Handler
-	handlerOrderDetailNew func() *handlerOrderDetail.Handler
-	handlerOrderFindNew func() *handlerOrderFind.Handler
 	handlerOrderGetNew func() *handlerOrderGet.Handler
 	handlerOrderUpdateNew func() *handlerOrderUpdate.Handler
 	handlerUserCreateNew func() *handlerUserCreate.Handler
 	handlerUserDeleteNew func() *handlerUserDelete.Handler
-	handlerUserFindNew func() *handlerUserFind.Handler
 	handlerUserGetNew func() *handlerUserGet.Handler
-	handlerUserLookupNew func() *handlerUserLookup.Handler
 	handlerUserUpdateNew func() *handlerUserUpdate.Handler
 	loggerNewLogger func() logger.Logger
 	metricsNewHealthChecker func() *metrics.HealthChecker
 	metricsNewPort func() metrics.Port
 	metricsNewTimeout func() metrics.Timeout
+	storageNewDbConnection func() *storage.DbConnection
+	storageNewDbStorageEntityOrderInt func() *storage.DbStorage[int, entity.Order]
+	storageNewRedisConnection func() *storage.RedisConnection
+	storageNewRedisStorageEntityUserString func() *storage.RedisStorage[string, entity.User]
+	storageNewRedisStorageStorageCacheEntryEntityOrderInt func() *storage.RedisStorage[int, storage.CacheEntry[entity.Order]]
+	storageNewRedisStorageStorageCacheEntryEntityUserString func() *storage.RedisStorage[string, storage.CacheEntry[entity.User]]
+	storageNewIntEntityOrder func() *storage.Cache[int, entity.Order]
+	storageNewStringEntityUser func() *storage.Cache[string, entity.User]
 }
 
 func NewDI() di.DI {
 	di := &DI{}
 
-	di.cacheNewMemStorageCacheCacheEntryStringInt = sync.OnceValue(func() *cache.MemStorage[int, cache.CacheEntry[string]] {
-		return cache.NewMemStorage[cache.CacheEntry[string], int]()
-	})
-
-	di.cacheNewIntString = sync.OnceValue(func() *cache.Cache[int, string] {
-		return cache.New[int, string](
-			di.cacheNewMemStorageCacheCacheEntryStringInt(),
-		)
-	})
-
-	di.callbackNewHandlerFunc = sync.OnceValue(func() callback.HandlerFunc {
-		return callback.NewHandlerFunc()
-	})
-
 	di.configNewConfig = sync.OnceValue(func() *config.Config {
 		return config.NewConfig()
 	})
 
-	di.configNewDBConfig = sync.OnceValue(func() config.DBConfig {
-		return config.NewDBConfig(
+	di.configNewDbDsn = sync.OnceValue(func() config.Dsn {
+		return config.NewDbDsn(
 			di.configNewConfig(),
 		)
 	})
 
-	di.entityNewRepoEntityOrder = sync.OnceValue(func() *entity.Repo[entity.Order] {
-		return entity.NewRepo[entity.Order](
-			di.configNewDBConfig(),
+	di.configNewRedisDsn = sync.OnceValue(func() config.Dsn {
+		return config.NewRedisDsn(
+			di.configNewConfig(),
 		)
 	})
 
-	di.entityNewSluggedRepo = sync.OnceValue(func() *entity.SluggedRepo {
-		return entity.NewSluggedRepo(
-			di.configNewDBConfig(),
+	di.entityNewOrderRepo = sync.OnceValue(func() *entity.OrderRepo {
+		return entity.NewOrderRepo(
+			di.storageNewDbStorageEntityOrderInt(),
+			di.storageNewIntEntityOrder(),
 		)
 	})
 
-	di.entityNewYaRepo = sync.OnceValue(func() *entity.Repo[entity.User] {
-		return entity.NewYaRepo(
-			di.configNewDBConfig(),
+	di.entityNewUserRepo = sync.OnceValue(func() *entity.UserRepo {
+		return entity.NewUserRepo(
+			di.storageNewRedisStorageEntityUserString(),
+			di.storageNewStringEntityUser(),
 		)
 	})
 
 	di.eventNewComplexEvent = sync.OnceValue(func() event.ComplexEvent {
 		return event.NewComplexEvent()
+	})
+
+	di.eventNewHandlerFunc = sync.OnceValue(func() event.HandlerFunc {
+		return event.NewHandlerFunc()
 	})
 
 	di.eventNewNotifyChan = sync.OnceValue(func() event.NotifyChan {
@@ -126,20 +117,15 @@ func NewDI() di.DI {
 		return handler.NewHTTPServer(
 			[]handler.Handler{
 				di.handlerAdminStatsNew(),
-				di.handlerCacheNew(),
 				di.handlerDispatcherNew(),
 				di.handlerMetricsNew(),
 				di.handlerOrderCreateNew(),
 				di.handlerOrderDeleteNew(),
-				di.handlerOrderDetailNew(),
-				di.handlerOrderFindNew(),
 				di.handlerOrderGetNew(),
 				di.handlerOrderUpdateNew(),
 				di.handlerUserCreateNew(),
 				di.handlerUserDeleteNew(),
-				di.handlerUserFindNew(),
 				di.handlerUserGetNew(),
-				di.handlerUserLookupNew(),
 				di.handlerUserUpdateNew(),
 			},
 		)
@@ -148,22 +134,15 @@ func NewDI() di.DI {
 	di.handlerAdminStatsNew = sync.OnceValue(func() *handlerAdminStats.Handler {
 		return handlerAdminStats.New(
 			[]handlerAdminStats.Repo{
-				di.entityNewRepoEntityOrder(),
-				di.entityNewSluggedRepo(),
-				di.entityNewYaRepo(),
+				di.entityNewOrderRepo(),
+				di.entityNewUserRepo(),
 			},
-		)
-	})
-
-	di.handlerCacheNew = sync.OnceValue(func() *handlerCache.Handler {
-		return handlerCache.New(
-			di.cacheNewIntString(),
 		)
 	})
 
 	di.handlerDispatcherNew = sync.OnceValue(func() *handlerDispatcher.Handler {
 		return handlerDispatcher.New(
-			di.callbackNewHandlerFunc(),
+			di.eventNewHandlerFunc(),
 			di.eventNewNotifyChan(),
 			di.eventNewComplexEvent(),
 		)
@@ -180,73 +159,49 @@ func NewDI() di.DI {
 
 	di.handlerOrderCreateNew = sync.OnceValue(func() *handlerOrderCreate.Handler {
 		return handlerOrderCreate.New(
-			di.entityNewRepoEntityOrder(),
+			di.entityNewOrderRepo(),
 		)
 	})
 
 	di.handlerOrderDeleteNew = sync.OnceValue(func() *handlerOrderDelete.Handler {
 		return handlerOrderDelete.New(
-			di.entityNewRepoEntityOrder(),
-		)
-	})
-
-	di.handlerOrderDetailNew = sync.OnceValue(func() *handlerOrderDetail.Handler {
-		return handlerOrderDetail.New(
-			di.entityNewRepoEntityOrder(),
-		)
-	})
-
-	di.handlerOrderFindNew = sync.OnceValue(func() *handlerOrderFind.Handler {
-		return handlerOrderFind.New(
-			di.entityNewRepoEntityOrder(),
+			di.entityNewOrderRepo(),
 		)
 	})
 
 	di.handlerOrderGetNew = sync.OnceValue(func() *handlerOrderGet.Handler {
 		return handlerOrderGet.New(
-			di.entityNewRepoEntityOrder(),
+			di.entityNewOrderRepo(),
 		)
 	})
 
 	di.handlerOrderUpdateNew = sync.OnceValue(func() *handlerOrderUpdate.Handler {
 		return handlerOrderUpdate.New(
-			di.entityNewRepoEntityOrder(),
+			di.entityNewOrderRepo(),
 		)
 	})
 
 	di.handlerUserCreateNew = sync.OnceValue(func() *handlerUserCreate.Handler {
 		return handlerUserCreate.New(
-			di.entityNewSluggedRepo(),
+			di.entityNewUserRepo(),
 		)
 	})
 
 	di.handlerUserDeleteNew = sync.OnceValue(func() *handlerUserDelete.Handler {
 		return handlerUserDelete.New(
-			di.entityNewSluggedRepo(),
-		)
-	})
-
-	di.handlerUserFindNew = sync.OnceValue(func() *handlerUserFind.Handler {
-		return handlerUserFind.New(
-			di.entityNewSluggedRepo(),
+			di.entityNewUserRepo(),
 		)
 	})
 
 	di.handlerUserGetNew = sync.OnceValue(func() *handlerUserGet.Handler {
 		return handlerUserGet.New(
-			di.entityNewSluggedRepo(),
-		)
-	})
-
-	di.handlerUserLookupNew = sync.OnceValue(func() *handlerUserLookup.Handler {
-		return handlerUserLookup.New(
-			di.entityNewSluggedRepo(),
+			di.entityNewUserRepo(),
 		)
 	})
 
 	di.handlerUserUpdateNew = sync.OnceValue(func() *handlerUserUpdate.Handler {
 		return handlerUserUpdate.New(
-			di.entityNewSluggedRepo(),
+			di.entityNewUserRepo(),
 		)
 	})
 
@@ -256,7 +211,8 @@ func NewDI() di.DI {
 
 	di.metricsNewHealthChecker = sync.OnceValue(func() *metrics.HealthChecker {
 		d, err := metrics.NewHealthChecker(
-			di.configNewDBConfig(),
+			di.configNewDbDsn(),
+			di.configNewRedisDsn(),
 			di.metricsNewPort(),
 		)
 		if err != nil {
@@ -271,6 +227,54 @@ func NewDI() di.DI {
 
 	di.metricsNewTimeout = sync.OnceValue(func() metrics.Timeout {
 		return metrics.NewTimeout()
+	})
+
+	di.storageNewDbConnection = sync.OnceValue(func() *storage.DbConnection {
+		return storage.NewDbConnection(
+			di.configNewDbDsn(),
+		)
+	})
+
+	di.storageNewDbStorageEntityOrderInt = sync.OnceValue(func() *storage.DbStorage[int, entity.Order] {
+		return storage.NewDbStorage[entity.Order, int](
+			di.storageNewDbConnection(),
+		)
+	})
+
+	di.storageNewRedisConnection = sync.OnceValue(func() *storage.RedisConnection {
+		return storage.NewRedisConnection(
+			di.configNewRedisDsn(),
+		)
+	})
+
+	di.storageNewRedisStorageEntityUserString = sync.OnceValue(func() *storage.RedisStorage[string, entity.User] {
+		return storage.NewRedisStorage[entity.User, string](
+			di.storageNewRedisConnection(),
+		)
+	})
+
+	di.storageNewRedisStorageStorageCacheEntryEntityOrderInt = sync.OnceValue(func() *storage.RedisStorage[int, storage.CacheEntry[entity.Order]] {
+		return storage.NewRedisStorage[storage.CacheEntry[entity.Order], int](
+			di.storageNewRedisConnection(),
+		)
+	})
+
+	di.storageNewRedisStorageStorageCacheEntryEntityUserString = sync.OnceValue(func() *storage.RedisStorage[string, storage.CacheEntry[entity.User]] {
+		return storage.NewRedisStorage[storage.CacheEntry[entity.User], string](
+			di.storageNewRedisConnection(),
+		)
+	})
+
+	di.storageNewIntEntityOrder = sync.OnceValue(func() *storage.Cache[int, entity.Order] {
+		return storage.New[int, entity.Order](
+			di.storageNewRedisStorageStorageCacheEntryEntityOrderInt(),
+		)
+	})
+
+	di.storageNewStringEntityUser = sync.OnceValue(func() *storage.Cache[string, entity.User] {
+		return storage.New[string, entity.User](
+			di.storageNewRedisStorageStorageCacheEntryEntityUserString(),
+		)
 	})
 
 	return di

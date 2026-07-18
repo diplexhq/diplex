@@ -2,23 +2,30 @@
 package config
 
 // DBConfig — value type provider для тестирования.
-type DBConfig struct {
-	Dsn string
-}
-
-func (c DBConfig) DSN() string       { return c.Dsn }
-func (c DBConfig) DSNMethod() string { return c.DSN() }
+type (
+	Dsn      string
+	RedisDsn = Dsn
+)
 
 // Config — корневой провайдер (без зависимостей).
 type Config struct {
-	db DBConfig
+	db       Dsn
+	redis    Dsn
+	memcache Dsn
 }
 
 func NewConfig() *Config {
 	return &Config{
-		db: DBConfig{Dsn: "postgres://user:pass@localhost:5432/" + "db"},
+		db:       "postgres://user:pass@localhost:5432/",
+		redis:    "redis://user:pass@localhost:5432/",
+		memcache: "memcache://user:pass@localhost:5432/",
 	}
 }
 
-func (c *Config) DB() DBConfig         { return c.db }
-func NewDBConfig(cfg *Config) DBConfig { return cfg.db }
+func NewRedisDsn(cnf *Config) RedisDsn {
+	return cnf.redis
+}
+
+func NewDbDsn(cnf *Config) (dbDsn Dsn) {
+	return cnf.db
+}

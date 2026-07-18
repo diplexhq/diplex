@@ -1,113 +1,55 @@
-# DIplex — генератор DI-контейнера для Go
+# Архитектура проекта
 
-## Назначение
-
-Автоматическое сканирование Go-кода и генерация высокопроизводительного DI-контейнера на этапе кодгенерации (code generation).
-
-## Основные принципы
-
-- **Compile-time DI** — без runtime reflection, максимальная производительность
-- **Type-safe** — все зависимости проверяются при компиляции
-- **Zero overhead** — сгенерированный код равен ручному внедрению зависимостей
-- **Convention over configuration** — использует стандартные паттерны Go
-
-## Как это работает
-
-### 1. Сканирование
-Рекурсивный обход Go-файлов в заданных директориях. Пропускает `_test.go` и директории `mocks/`. Парсинг AST через стандартный `go/parser`.
-
-### 2. Анализ
-Извлекает три типа сущностей:
-
-**Провайдеры:** функции с паттерном `New*`, возвращающие указатель (опционально с `error`). Поддерживают дженерики: `NewRepo[T User | Order]` производит concrete instantiations.
-
-**Интерфейсы:** объявленные интерфейсы с методами и встроенными интерфейсами. Поддерживают дженерики: `Repository[T any]`.
-
-**Реализации:** публичные методы структур, включая generic receiver: `func (r *Repo[Order]) Get(id int) (Order, error)`.
-
-### 3. Генерация
-Создает DI-фасады в выходной директории. Каждая `-di` директория производит один `.go` файл со структурой `DI` и конструктором `NewDI()`, использующим `sync.OnceValue` для singleton-семантики.
-
-Имена полей для generic-провайдеров санитизируются в camelCase: `entity.NewRepo[entity.Order]` → `entityNewRepoEntityOrder`.
-
-## Структура проекта
+## Обзор пайплайна
 
 ```
-├── main.go                    # Точка входа, оркестрация
-└── internal/
-    ├── generator/             # Генерация кода (шаблоны: facade, provider, head, import)
-    ├── resolver/              # Разрешение провайдеров и маппинг зависимостей
-    │   ├── build_index.go     # typeIndex + interfaceMethodIndex
-    │   ├── find_providers.go  # Поиск провайдеров и matching constraints
-    │   └── resolve*.go        # BFS обход зависимостей
-    ├── scanner/               # Сканирование Go файлов
-    ├── parser/                # Парсинг и анализ AST
-    │   ├── ast_stringer/      # AST → string (каноническое форматирование)
-    │   └── resolve*.go        # Алиасы и embeds
-    ├── domain/                # Доменные типы (ParsedData, Provider, MethodContract)
-    ├── di/                    # Интерфейс DI-фасада
-    ├── config/                # CLI-флаги и конфигурация
-    └── utils/                 # Must, NoErr, SanitizeIdent, Logger
+go/parser → AST → Scanner → chan SourceFile → Parser → ParsedData → Resolver → ResolvedData → Generator → di.go
 ```
 
-## Использование
+Пайплайн состоит из четырёх этапов: **scan → parse → resolve → generate**. Каждый этап produces well-defined промежуточное представление, которое потребляется следующим.
 
-```bash
-# Установить как Go-утилиту
-go get github.com/diplexhq/diplex
+## Этап 1: Scanner (`internal/scanner/`)
 
-# Запуск из корня целевого проекта (автоматически читает go.mod)
-go tool diplex
+Один горутин проходит по директориям через `filepath.WalkDir`, применяет фильтры skip pattern и отправляет принятые `.go` пути в буферизированный канал (`chan SourceFile`, capacity 4). Параллелизм отложен до этапа парсера.
 
-# Сканировать конкретные директории
-go tool diplex -scan internal,pkg
+## Этап 2: Parser (`internal/parser/`)
 
-# Пользовательская директория вывода
-go tool diplex -out internal/generated/diplex
+4 горутина потребляют канал параллельно, парся Go AST и извлекая провайдеры (`New*` функции), интерфейсы, реализации (methods receiver), type aliases и embeds. Изменяемое состояние защищено `sync.Mutex`. Пост-парсинг: алиасы flatten, embeds BFS-flatten.
 
-# Явный путь модуля (без чтения go.mod)
-go tool diplex -module example.com/my/project
+## Этап 3: Resolver (`internal/resolver/`)
 
-# Пользовательский паттерн пропуска (regexp)
-go tool diplex -skip "(internal\/generated\/diplex|testdata|mocks?|_test\.go|_mock\.go)$"
+Строит два индекса (`typeIndex` + `interfaceMethodIndex`) из ParsedData и разрешает зависимости через BFS traversal от facade method result types. Поддерживает generic constraint narrowing и combinatorial resolution.
 
-# Указать директории с DI-фасадами
-go tool diplex -di internal/di
+> **Глубокие детали** — алгоритмы, сужение констрейнов, комбинаторика, характеристики производительности: см. [ARCHITECTURE.md](ARCHITECTURE.md).
 
-# Подробный / тихий режим
-go tool diplex -v
-go tool diplex -s
+## Этап 4: Generator (`internal/generator/`)
+
+Генерирует DI-контейнер `.go` файлы из `ResolvedData` используя четыре embedded шаблона (`head`, `import`, `facade`, `provider`). Provider поля обёрнуты в `sync.OnceValue()` для lazy initialization. Output детерминирован (SHA-256 verified).
+
+## Принципы дизайна
+
+- **Interface-based DI**: Зависимости wire через интерфейсы, определённые в `-di` директориях (facades). Сгенерированный код имплементирует эти facades.
+- **Narrow interfaces at point of use**: Каждый consumer определяет minimal interface. Resolver matches implementations через method signature comparison.
+- **Name-based disambiguation**: Когда multiple providers satisfy type, parameter names resolve ambiguity через `ResultName` matching.
+- **Slice aggregation**: `[]T` parameters автоматически collect all matching providers.
+- **Ноль внешних зависимостей**: Только стандартная библиотека (`go/parser`, `go/types`, `text/template`, `sync`).
+
+## Пайплайн разрешения type aliases
+
+```
+parseTypeAliases → resolveAliases → resolveProviders → resolveMethods
+                    │                │                  │
+                    │                │                  └─ replace Params & Results
+                    │                └─ replace Arguments & Result
+                    └─ BFS-flatten alias chains
 ```
 
-**Умолчания:** сканирует `internal/`, DI-фасады в `internal/di/`, вывод в `internal/generated/diplex/`.
+Built-in aliases (`byte`→`uint8`, `rune`→`int32`, `interface{}`→`any`) resolved в `parseTypeAliases`, затем applied transitively ко всем provider arguments, results и method signatures во время `resolveAliases`.
 
-## Ограничения
+## Matching method signatures
 
-- **Примитивные типы должны быть обёрнуты** — `string`, `int` и др. не могут быть сопоставлены. Каждый примитивный аргумент должен использовать уникальный именованный тип.
-- **Узкие интерфейсы** — объявляйте интерфейсы по месту использования, не создавайте широкие глобальные интерфейсы.
-- **Внешние интерфейсы** — сканируются только интерфейсы из project code, не из stdlib или внешних пакетов.
-- **Provider возвращает 1-2 значения** — поддерживаются только `T`, `T, error`, `*T`, `*T, error`.
-- **Все провайдеры — синглтоны** через `sync.OnceValue`. Циклические зависимости вызывают panic при запуске.
+Resolver matches interface methods через two-tier key lookup в `interfaceMethodIndex`:
+1. **Full signature key** — `"Name(args)(results)"` для non-generic методов
+2. **Bare name key** — `"Name"` для generic методов
 
-## Стиль интерфейсов
-
-```go
-// ХОРОШО — узкий интерфейс потребителя
-type ScanDirProvider interface {
-    ScanDirs() string
-    Silent() bool
-}
-
-// ПЛОХО — широкий интерфейс
-type GlobalConfig interface {
-    ScanDirs() string
-    OutputDir() string
-    IsSilent() bool
-}
-```
-
-Избегайте префиксов `Get` и `Is` в именах методов. Используйте существительные или прилагательные напрямую.
-
-## Полное покрытие сценариев
-
-Смотрите [SCENARIOS.md](SCENARIOS.md) — полный каталог всех поддерживаемых DI сценариев и интеграционных тестов в `internal/tests/`.
+Оба queried, results unioned. Это гарантирует что и concrete implementations и generic providers satisfy interface requirements.

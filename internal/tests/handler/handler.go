@@ -1,4 +1,3 @@
-// Package handler — base type shared by all HTTP handlers для тестирования struct embedding (#14).
 package handler
 
 type Base struct {

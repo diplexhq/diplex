@@ -40,6 +40,14 @@ func (fp *Parser) parseProvider(funcDecl *ast.FuncDecl, imports map[string]strin
 
 	withError := false
 
+	results, resultNames := astStringer.FieldsToStrings(funcDecl.Type.Results, imports, pkg, genericAlias)
+	arguments, argNames := astStringer.FieldsToStrings(funcDecl.Type.Params, imports, pkg, genericAlias)
+
+	resultName := baseIdent
+	if len(resultNames) > 0 {
+		resultName = resultNames[0]
+	}
+
 	if len(funcDecl.Type.Results.List) == 2 {
 		errIdent, ok := funcDecl.Type.Results.List[1].Type.(*ast.Ident)
 		if !ok || errIdent.Name != "error" {
@@ -49,21 +57,23 @@ func (fp *Parser) parseProvider(funcDecl *ast.FuncDecl, imports map[string]strin
 		withError = true
 	}
 
-	result := domain.Parameter(astStringer.ExprToStringWithGenerics(funcDecl.Type.Results.List[0].Type, imports, pkg, genericAlias))
 	provider := &domain.Provider{
-		Pkg:       pkg,
-		Name:      funcDecl.Name.Name + genericSuffix,
-		Arguments: astStringer.FieldsToStrings(funcDecl.Type.Params, imports, pkg, genericAlias),
-		Result:    result,
-		Generic:   genericConstrain,
-		Error:     withError,
+		ID:         domain.ProviderID(pkg + "." + funcDecl.Name.Name + genericSuffix),
+		Pkg:        pkg,
+		Name:       funcDecl.Name.Name + genericSuffix,
+		Arguments:  arguments,
+		ArgNames:   argNames,
+		Result:     results[0],
+		ResultName: resultName,
+		Generic:    genericConstrain,
+		Error:      withError,
 	}
 
 	state.mu.Lock()
-	state.providers[domain.ProviderID(provider.Id())] = provider
+	state.providers[provider.ID] = provider
 	state.mu.Unlock()
 
-	fp.log.Debug("provider found", "id", provider.Id(), "result", result)
+	fp.log.Debug("provider found", "id", provider.ID, "result", results[0])
 }
 
 // extractGenericParams extracts generic type parameters from a function declaration.

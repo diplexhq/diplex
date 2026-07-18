@@ -22,7 +22,7 @@ var facadeTmpl string
 //go:embed tmpl/provider.tmpl
 var providerTmpl string
 
-func (dig *DiGenerator) render(data *buildData, name, fname string) {
+func (dig *Generator) render(data *buildData, name, fname string) {
 	out := utils.Must(os.Create(dig.cfg.OutputDir() + "/" + fname + ".go")) // nolint:gosec
 
 	defer func() { _ = out.Close() }()
@@ -33,12 +33,12 @@ func (dig *DiGenerator) render(data *buildData, name, fname string) {
 	dig.renderProvider(out, name, data.tmplData)
 }
 
-func (dig *DiGenerator) renderHead(out io.Writer) {
+func (dig *Generator) renderHead(out io.Writer) {
 	tmpl := utils.Must(template.New("head").Parse(headTmpl))
 	utils.NoErr(tmpl.Execute(out, struct{ PackageName string }{PackageName: filepath.Base(dig.cfg.OutputDir())}))
 }
 
-func (dig *DiGenerator) renderImports(out io.Writer, tmplData tmplData) {
+func (dig *Generator) renderImports(out io.Writer, tmplData tmplData) {
 	tmpl := utils.Must(template.New("imports").Parse(importsTmpl))
 	utils.NoErr(tmpl.Execute(out, struct {
 		Imports []string
@@ -47,7 +47,7 @@ func (dig *DiGenerator) renderImports(out io.Writer, tmplData tmplData) {
 	}))
 }
 
-func (dig *DiGenerator) renderFacade(out io.Writer, name string, tmplData tmplData) {
+func (dig *Generator) renderFacade(out io.Writer, name string, tmplData tmplData) {
 	tmpl := utils.Must(template.New("facade").Parse(facadeTmpl))
 	utils.NoErr(tmpl.Execute(out, struct {
 		Name   string
@@ -58,7 +58,7 @@ func (dig *DiGenerator) renderFacade(out io.Writer, name string, tmplData tmplDa
 	}))
 }
 
-func (dig *DiGenerator) renderProvider(out io.Writer, name string, tmplData tmplData) {
+func (dig *Generator) renderProvider(out io.Writer, name string, tmplData tmplData) {
 	tmpl := utils.Must(template.New("provider").Parse(providerTmpl))
 	utils.NoErr(tmpl.Execute(out, struct {
 		Name      string

@@ -1,4 +1,3 @@
-// Package ordercreate — узкий интерфейс для теста narrow interface per consumer.
 package create
 
 import (
@@ -9,7 +8,7 @@ import (
 )
 
 type Repo interface {
-	Create(o entity.Order) (entity.Order, error)
+	Set(int, entity.Order)
 }
 
 type Handler struct {
@@ -17,8 +16,8 @@ type Handler struct {
 	repo Repo
 }
 
-func New(repo Repo) *Handler {
-	return &Handler{Base: handler.NewBase("/orders"), repo: repo}
+func New(orderRepo Repo) *Handler {
+	return &Handler{Base: handler.NewBase("/orders"), repo: orderRepo}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

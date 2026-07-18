@@ -1,4 +1,3 @@
-// Package logger — узкий интерфейс для тестирования narrow interface per consumer (#12).
 package logger
 
 type Logger interface {
@@ -9,9 +8,9 @@ type Logger interface {
 
 type stubLogger struct{}
 
-func (s *stubLogger) Info(msg string, p ...any)  {}
-func (s *stubLogger) Warn(msg string, p ...any)  {}
-func (s *stubLogger) Error(msg string, p ...any) {}
+func (s *stubLogger) Info(string, ...any)  {}
+func (s *stubLogger) Warn(string, ...any)  {}
+func (s *stubLogger) Error(string, ...any) {}
 
 func NewLogger() Logger {
 	return &stubLogger{}

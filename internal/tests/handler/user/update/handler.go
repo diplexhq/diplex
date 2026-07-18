@@ -8,7 +8,8 @@ import (
 )
 
 type Repo interface {
-	Update(u entity.User) (entity.User, error)
+	Get(string) (entity.User, bool)
+	Set(string, entity.User)
 }
 
 type Handler struct {
@@ -16,8 +17,8 @@ type Handler struct {
 	repo Repo
 }
 
-func New(repo Repo) *Handler {
-	return &Handler{Base: handler.NewBase("/users/{id}"), repo: repo}
+func New(userRepo Repo) *Handler {
+	return &Handler{Base: handler.NewBase("/users/{id}"), repo: userRepo}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,3 @@
-// Package orderupdate — interface composition via embedding (#15): Repo embeds OrderReader + OrderWriter.
 package update
 
 import (
@@ -9,11 +8,11 @@ import (
 )
 
 type OrderReader interface {
-	Get(id int) (entity.Order, error)
+	Get(id int) (entity.Order, bool)
 }
 
 type OrderWriter interface {
-	Update(o entity.Order) (entity.Order, error)
+	Set(int, entity.Order)
 }
 
 type Repo interface {
@@ -26,8 +25,8 @@ type Handler struct {
 	repo Repo
 }
 
-func New(repo Repo) *Handler {
-	return &Handler{Base: handler.NewBase("/orders/{id}"), repo: repo}
+func New(orderRepo Repo) *Handler {
+	return &Handler{Base: handler.NewBase("/orders/{id}"), repo: orderRepo}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

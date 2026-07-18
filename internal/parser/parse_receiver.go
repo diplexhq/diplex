@@ -30,9 +30,12 @@ func (fp *Parser) parseReceiver(funcDecl *ast.FuncDecl, imports map[string]strin
 	suffix, genericAlias := fp.parseReceiverGenerics(recv)
 	interfaceID := domain.InterfaceID(pkg + "." + baseName + suffix)
 
+	arguments, _ := astStringer.FieldsToStrings(funcDecl.Type.Params, imports, pkg, genericAlias)
+	results, _ := astStringer.FieldsToStrings(funcDecl.Type.Results, imports, pkg, genericAlias)
+
 	method := domain.MethodContract{
-		Arguments: astStringer.FieldsToStrings(funcDecl.Type.Params, imports, pkg, genericAlias),
-		Results:   astStringer.FieldsToStrings(funcDecl.Type.Results, imports, pkg, genericAlias),
+		Arguments: arguments,
+		Results:   results,
 	}
 	methodName := domain.FunctionName(funcDecl.Name.Name)
 

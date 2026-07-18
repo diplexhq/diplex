@@ -1,4 +1,3 @@
-// Package stats — generic constraint widening для тестирования User и Order.
 package stats
 
 import (

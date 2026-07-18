@@ -33,9 +33,11 @@ func (fp *Parser) parseInterface(genDecl *ast.GenDecl, imports map[string]string
 					continue
 				}
 
+				params, _ := astStringer.FieldsToStrings(mt.Params, imports, pkg, nil)
+				results, _ := astStringer.FieldsToStrings(mt.Results, imports, pkg, nil)
 				methods[domain.FunctionName(method.Names[0].Name)] = domain.MethodContract{
-					Arguments: astStringer.FieldsToStrings(mt.Params, imports, pkg, nil),
-					Results:   astStringer.FieldsToStrings(mt.Results, imports, pkg, nil),
+					Arguments: params,
+					Results:   results,
 				}
 			case *ast.Ident, *ast.SelectorExpr:
 				embeds = append(embeds, domain.InterfaceID(astStringer.ExprToString(mt, imports, pkg)))

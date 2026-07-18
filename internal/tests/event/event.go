@@ -1,7 +1,8 @@
-// Package event — chan direction (#23), map types (#24), named return values (#34) для тестирования.
 package event
 
-import "context"
+import (
+	"context"
+)
 
 type Event struct {
 	Type    string
@@ -14,21 +15,20 @@ func NewNotifyChan() NotifyChan {
 	return make(NotifyChan, 16)
 }
 
-// ComplexResult — named return types (#34).
+// ComplexResult — named return types.
 type ComplexResult struct {
 	Count int
 	Total float64
 	Err   error
 }
 
+type PayloadEntry int
+
 // ComplexEvent — chan direction, map, context, named return combined (#31, #32, #34).
 type ComplexEvent interface {
-	StreamOutputs(ctx context.Context) chan<- Event
-	StreamInputs(ctx context.Context) <-chan ComplexResult
-	Hub() chan chan Event
-	Tags() map[string]string
-	Sizes() map[string]int
-	Register(ctx context.Context, name string, handler chan Event) error
+	StreamOutputs(context.Context) chan<- Event
+	StreamInputs(context.Context) <-chan ComplexResult
+	Process(context.Context, []any, map[string][]int32) (map[uint8][]interface{}, []PayloadEntry)
 }
 
 type complexEventImpl struct{}
@@ -37,11 +37,11 @@ func NewComplexEvent() ComplexEvent {
 	return &complexEventImpl{}
 }
 
-func (c *complexEventImpl) StreamOutputs(ctx context.Context) chan<- Event        { return nil }
-func (c *complexEventImpl) StreamInputs(ctx context.Context) <-chan ComplexResult { return nil }
-func (c *complexEventImpl) Hub() chan chan Event                                  { return nil }
-func (c *complexEventImpl) Tags() map[string]string                               { return nil }
-func (c *complexEventImpl) Sizes() map[string]int                                 { return nil }
-func (c *complexEventImpl) Register(ctx context.Context, name string, handler chan Event) error {
+func (c *complexEventImpl) StreamOutputs(_ context.Context) chan<- Event { return nil }
+func (c *complexEventImpl) StreamInputs(_ context.Context) <-chan ComplexResult {
 	return nil
+}
+
+func (c *complexEventImpl) Process(_ context.Context, _ []any, _ map[string][]int32) (map[uint8][]interface{}, []PayloadEntry) {
+	return nil, nil
 }

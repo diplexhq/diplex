@@ -1,113 +1,55 @@
-# DIplex - Go DI Container Generator
+# Project Architecture
 
-## Purpose
-
-Automatic Go code scanner and high-performance DI container generator at code generation time (code generation).
-
-## Core Principles
-
-- **Compile-time DI** - no runtime reflection, maximum performance
-- **Type-safe** - all dependencies checked at compile time
-- **Zero overhead** - generated code equals manual dependency injection
-- **Convention over configuration** - uses standard Go patterns
-
-## How It Works
-
-### 1. Scanning
-Recursive traversal of Go files in specified directories. Skips `_test.go` and `mocks/` directories. Parses AST via standard `go/parser`.
-
-### 2. Analysis
-Extracts three entity types:
-
-**Providers:** Functions matching `New*` pattern, returning a pointer (optionally with `error`). Supports generics: `NewRepo[T User | Order]` produces concrete instantiations.
-
-**Interfaces:** Declared interfaces with methods and embedded interfaces. Supports generics: `Repository[T any]`.
-
-**Implementations:** Public struct methods, including generic receiver: `func (r *Repo[Order]) Get(id int) (Order, error)`.
-
-### 3. Generation
-Produces DI facade files in the output directory. Each `-di` directory produces one `.go` file with a `DI` struct and `NewDI()` constructor using `sync.OnceValue` for singleton semantics.
-
-Field names for generic providers are sanitized to valid camelCase: `entity.NewRepo[entity.Order]` → `entityNewRepoEntityOrder`.
-
-## Project Structure
+## Pipeline Overview
 
 ```
-├── main.go                    # Entry point, orchestration
-└── internal/
-    ├── generator/             # Code generation (templates: facade, provider, head, import)
-    ├── resolver/              # Provider resolution and dependency mapping
-    │   ├── build_index.go     # typeIndex + interfaceMethodIndex
-    │   ├── find_providers.go  # Provider lookup and constraint matching
-    │   └── resolve*.go        # BFS dependency traversal
-    ├── scanner/               # Go file scanning
-    ├── parser/                # AST parsing & analysis
-    │   ├── ast_stringer/      # AST → string (canonical formatting)
-    │   └── resolve*.go        # Aliases and embeds
-    ├── domain/                # Domain types (ParsedData, Provider, MethodContract)
-    ├── di/                    # DI facade interface
-    ├── config/                # CLI flags and configuration
-    └── utils/                 # Must, NoErr, SanitizeIdent, Logger
+go/parser → AST → Scanner → chan SourceFile → Parser → ParsedData → Resolver → ResolvedData → Generator → di.go
 ```
 
-## Usage
+The pipeline is a four-stage flow: **scan → parse → resolve → generate**. Each stage produces a well-defined intermediate representation consumed by the next.
 
-```bash
-# Install as Go tool
-go get github.com/diplexhq/diplex
+## Stage 1: Scanner (`internal/scanner/`)
 
-# Run from target project root (reads go.mod automatically)
-go tool diplex
+Single goroutine walks directories via `filepath.WalkDir`, applies skip pattern filters, and sends accepted `.go` file paths to a buffered channel (`chan SourceFile`, capacity 4). Parallelism is deferred to the parser stage.
 
-# Scan specific directories
-go tool diplex -scan internal,pkg
+## Stage 2: Parser (`internal/parser/`)
 
-# Custom output directory
-go tool diplex -out internal/generated/diplex
+Four goroutines consume the channel concurrently, parsing Go AST and extracting providers (`New*` functions), interfaces, implementations (receiver methods), type aliases, and embeds. Mutable state is protected by `sync.Mutex`. Post-parse, aliases are flattened and embeds are BFS-flattened.
 
-# Explicit module path (skip go.mod)
-go tool diplex -module example.com/my/project
+## Stage 3: Resolver (`internal/resolver/`)
 
-# Custom skip pattern (regexp)
-go tool diplex -skip "(internal\/generated\/diplex|testdata|mocks?|_test\.go|_mock\.go)$"
+Builds two indexes (`typeIndex` + `interfaceMethodIndex`) from parsed data and resolves dependencies via BFS traversal starting from facade method result types. Supports generic constraint narrowing and combinatorial resolution.
 
-# Specify DI facade directories
-go tool diplex -di internal/di
+> **Deep internals** — algorithms, constraint narrowing, combinatorics, performance characteristics: see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-# Verbose / Silent mode
-go tool diplex -v
-go tool diplex -s
+## Stage 4: Generator (`internal/generator/`)
+
+Produces DI container `.go` files from `ResolvedData` using four embedded templates (`head`, `import`, `facade`, `provider`). Provider fields are wrapped in `sync.OnceValue()` for lazy initialization. Output is deterministic (SHA-256 verified).
+
+## Design Principles
+
+- **Interface-based DI**: Dependencies are wired through interfaces defined in `-di` directories (facades). The generated code implements these facades.
+- **Narrow interfaces at point of use**: Each consumer defines the minimal interface it needs. The resolver matches implementations via method signature comparison.
+- **Name-based disambiguation**: When multiple providers satisfy a type, parameter names resolve ambiguity via `ResultName` matching.
+- **Slice aggregation**: `[]T` parameters automatically collect all matching providers.
+- **Zero external dependencies**: Standard library only (`go/parser`, `go/types`, `text/template`, `sync`).
+
+## Type Alias Resolution Pipeline
+
+```
+parseTypeAliases → resolveAliases → resolveProviders → resolveMethods
+                    │                │                  │
+                    │                │                  └─ replace Params & Results
+                    │                └─ replace Arguments & Result
+                    └─ BFS-flatten alias chains
 ```
 
-**Defaults:** scans `internal/`, DI facades in `internal/di/`, output to `internal/generated/diplex/`.
+Built-in aliases (`byte`→`uint8`, `rune`→`int32`, `interface{}`→`any`) are resolved in `parseTypeAliases`, then applied transitively to all provider arguments, results, and method signatures during `resolveAliases`.
 
-## Limitations
+## Method Signature Matching
 
-- **Primitive types must be wrapped** — `string`, `int` etc. cannot be matched. Each primitive argument must use a unique named type.
-- **Narrow interfaces** — declare interfaces at point of use, not broad shared interfaces.
-- **External interfaces** — only interfaces from project code are scanned, not from stdlib or external packages.
-- **Provider returns 1-2 values** — only `T`, `T, error`, `*T`, `*T, error` supported.
-- **All providers are singletons** via `sync.OnceValue`. Cyclic dependencies cause panic at runtime.
+The resolver matches interface methods using two-tier key lookup in `interfaceMethodIndex`:
+1. **Full signature key** — `"Name(args)(results)"` for non-generic methods
+2. **Bare name key** — `"Name"` for generic methods
 
-## Interface Style
-
-```go
-// GOOD — narrow consumer interface
-type ScanDirProvider interface {
-    ScanDirs() string
-    Silent() bool
-}
-
-// BAD — broad interface
-type GlobalConfig interface {
-    ScanDirs() string
-    OutputDir() string
-    IsSilent() bool
-}
-```
-
-Avoid `Get` and `Is` prefixes in method names. Use nouns or adjectives directly.
-
-## Full Scenario Coverage
-
-See [SCENARIOS.md](SCENARIOS.md) for the complete catalog of all supported DI scenarios and integration tests in `internal/tests/`.
+Both are queried and results unioned. This ensures both concrete implementations and generic providers satisfy interface requirements.

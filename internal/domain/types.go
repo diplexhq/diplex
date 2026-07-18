@@ -45,10 +45,22 @@ type ProviderCollection struct {
 	Providers      []*Provider
 }
 
+type ResolvedFacade map[FunctionName]ResolvedFacadeMethod
+
+type ResolvedFacadeMethod struct {
+	Result   Parameter
+	Provider *Provider
+}
+
+type ResolvedProvider struct {
+	Provider          *Provider
+	ArgumentProviders []ProviderCollection
+}
+
 // ResolvedData holds the final resolved dependency graph with provider collections per parameter and facades.
 type ResolvedData struct {
-	Providers map[Parameter]ProviderCollection
-	Facades   Interfaces
+	ResolvedFacades   map[InterfaceID]ResolvedFacade
+	ResolvedProviders map[ProviderID]ResolvedProvider
 }
 
 // MethodContract describes a single method signature.
@@ -58,18 +70,14 @@ type MethodContract struct {
 }
 
 // Provider describes a service constructor function.
-// Id() returns the unique identifier: pkgFullName + "." + functionName
 type Provider struct {
-	Pkg       string
-	Name      string
-	Arguments []Parameter
-	Result    Parameter           // Full return type string (for generic matching)
-	Generic   map[string][]string // Maps aligned generic alias (T, T1, ...) → constraint strings (e.g. "User", "Order" for [T User | Order])
-	Error     bool
-}
-
-// Id returns the unique provider identifier: full module path + "." + function name.
-// Example: "github.com/diplexhq/diplex/internal/tests/config.NewConfig"
-func (provider *Provider) Id() string {
-	return provider.Pkg + "." + provider.Name
+	ID         ProviderID
+	Pkg        string
+	Name       string
+	Arguments  []Parameter
+	ArgNames   []string
+	Result     Parameter
+	ResultName string
+	Generic    map[string][]string // Maps aligned generic alias (T, T1, ...) → constraint strings
+	Error      bool
 }

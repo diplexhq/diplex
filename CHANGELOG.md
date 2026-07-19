@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.1] - 2026-07-19
+
+### Doc Fixes
+- small updates
+
 ## [2.0.0] - 2026-07-18
 
 ### Breaking Changes

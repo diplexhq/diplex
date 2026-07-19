@@ -67,6 +67,4 @@ db := deps.DB()
 | | English | Русский |
 |---|---------|---------|
 | Developer Guide | [doc/en/DEVELOPER_GUIDE.md](doc/en/DEVELOPER_GUIDE.md) | [doc/ru/DEVELOPER_GUIDE.md](doc/ru/DEVELOPER_GUIDE.md) |
-| Quick Reference | [doc/en/QUICK_REF.md](doc/en/QUICK_REF.md) | [doc/ru/QUICK_REF.md](doc/ru/QUICK_REF.md) |
-| Project Architecture | [doc/en/PROJECT.md](doc/en/PROJECT.md) | [doc/ru/PROJECT.md](doc/ru/PROJECT.md) |
-| Requirements | [doc/en/REQUIREMENTS.md](doc/en/REQUIREMENTS.md) | [doc/ru/REQUIREMENTS.md](doc/ru/REQUIREMENTS.md) |
+| Architecture | [doc/en/ARCHITECTURE.md](doc/en/ARCHITECTURE.md) | [doc/ru/ARCHITECTURE.md](doc/ru/ARCHITECTURE.md) |

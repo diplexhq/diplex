@@ -24,6 +24,7 @@ go tool diplex
 | `-skip` | Regular expression for files/directories to skip during scanning | `"(internal\/generated\/diplex|tests|mocks?|_test\.go|_mock\.go)$"` |
 | `-v` | Verbose output — prints generation details to stderr | — |
 | `-s` | Silent mode — suppresses all output | — |
+| `-autoProvider` | Enable auto-provider scanning — every exported struct becomes a DI provider | `false` |
 
 **Mutual exclusivity:** `-v` and `-s` cannot be used together — the tool will panic if both are set.
 
@@ -84,6 +85,31 @@ type UserStore interface {
 type userRepository struct { db *DB }
 func (r *userRepository) Get(id int) (*User, error) { ... }
 ```
+
+**Auto-providers** — when `-autoProvider` is enabled, every exported struct is treated as a provider. The struct's exported fields become constructor arguments, and the generated provider returns a struct literal:
+
+```go
+// No New* function needed — diplex generates it automatically
+type CacheConfig struct {
+    Config *config.Config  // resolved from config.NewConfig
+    Logger logger.Logger   // resolved from logger.NewLogger
+}
+```
+
+Generates:
+
+```go
+di.cacheCacheConfig = sync.OnceValue(func() *cache.CacheConfig {
+    return &cache.CacheConfig{
+        Config: di.configNewConfig(),
+        Logger: di.loggerNewLogger(),
+    }
+})
+```
+
+If an explicit `New*` provider exists for the same type, the explicit provider takes precedence and the auto-provider is skipped.
+
+**Embedded fields** — auto-providers support embedded (anonymous) fields of any type: both structs (with methods or fields) and interfaces. Embedded structs are included as constructor dependencies — the resolver selects the matching provider by type (value or pointer). Embedded interfaces are also collected, allowing structs with only embedded interfaces to register as auto-providers.
 
 ### 3. Resolution
 

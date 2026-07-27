@@ -71,13 +71,14 @@ type MethodContract struct {
 
 // Provider describes a service constructor function.
 type Provider struct {
-	ID         ProviderID
-	Pkg        string
-	Name       string
-	Arguments  []Parameter
-	ArgNames   []string
-	Result     Parameter
-	ResultName string
-	Generic    map[string][]string // Maps aligned generic alias (T, T1, ...) → constraint strings
-	Error      bool
+	ID           ProviderID
+	Pkg          string
+	Name         string
+	Arguments    []Parameter
+	ArgNames     []string
+	Result       Parameter
+	ResultName   string
+	Generic      map[string][]string // Maps aligned generic alias (T, T1, ...) → constraint strings
+	Error        bool
+	AutoProvider bool // true if generated from struct fields, not a user function
 }

@@ -24,13 +24,15 @@ go mod vendor
 ### 1. Write code as usual / Пишите код как обычно
 
 Define providers with `New*` functions, define a `DI` interface facade.
+/ Определите провайдеры функциями `New*`, создайте интерфейс-фасад `DI`.
 
 ```go
-// Provider — функция New*, возвращает *Type или (Type, error)
-func NewConfig() *Config
-func NewDB(cfg *Config) (*DB, error)
+// New* function, provide dependency, optionally error
+// функция New*, возвращает зависимость, опционально ошибку
+func NewConfig() *Config {...}
+func NewDB(cfg *Config) (*DB, error) {...}
 
-// DI facade
+// DI facade / DI-фасад
 type DI interface {
     Config() *config.Config
     DB() *db.DB
@@ -44,6 +46,7 @@ go tool diplex
 ```
 
 Generated `di.go` appears in the output directory with wired dependencies.
+/ Сгенерированный `di.go` появится в выходной директории с подключёнными зависимостями.
 
 ### 3. Use it / Используйте
 
@@ -61,7 +64,7 @@ db := deps.DB()
 | | English | Русский |
 |---|---------|---------|
 | User Guide | [doc/en/USER_GUIDE.md](doc/en/USER_GUIDE.md) | [doc/ru/USER_GUIDE.md](doc/ru/USER_GUIDE.md) |
-| Scenarios (feature catalog) | [doc/en/SCENARIOS.md](doc/en/SCENARIOS.md) | [doc/ru/SCENARIOS.md](doc/ru/SCENARIOS.md) |
+| Scenarios | [doc/en/SCENARIOS.md](doc/en/SCENARIOS.md) | [doc/ru/SCENARIOS.md](doc/ru/SCENARIOS.md) |
 
 ### Developer-facing / Для разработчиков
 | | English | Русский |

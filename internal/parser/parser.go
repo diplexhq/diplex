@@ -75,6 +75,7 @@ func (fp *Parser) Parse(sourceFiles domain.SourceFiles) domain.ParsedData {
 
 	fp.resolveAliases(state)
 	fp.resolveEmbeds(state)
+	fp.filterAutoProviders(state)
 
 	fp.log.Debug("analysis complete", "providers", len(state.providers), "interfaces", len(state.interfaces))
 

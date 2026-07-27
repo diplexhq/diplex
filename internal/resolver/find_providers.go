@@ -40,7 +40,9 @@ func (res *Resolver) findProviderCollection(arg domain.Parameter, parsedData dom
 // findProviders dispatches to type-only or interface-only search.
 func (res *Resolver) findProviders(wanted domain.Parameter, parsedData domain.ParsedData, index providerIndex) []*domain.Provider {
 	if info, ok := parsedData.Interfaces[domain.InterfaceID(wanted)]; ok && !info.RealType && len(info.Methods) > 0 {
-		return res.findProvidersByInterface(wanted, parsedData, index.byMethod)
+		if providers := res.findProvidersByInterface(wanted, parsedData, index.byMethod); len(providers) > 0 {
+			return providers
+		}
 	}
 
 	return res.findProvidersByType(wanted, index.byType)

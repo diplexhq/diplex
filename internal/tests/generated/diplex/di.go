@@ -4,6 +4,7 @@ package diplex
 import (
 	"sync"
 
+	"github.com/diplexhq/diplex/internal/tests/cache"
 	"github.com/diplexhq/diplex/internal/tests/config"
 	"github.com/diplexhq/diplex/internal/tests/di"
 	"github.com/diplexhq/diplex/internal/tests/entity"
@@ -34,15 +35,22 @@ func (di *DI) Logger() logger.Logger {
 }
 
 type DI struct {
+	cachePCacheConfig func() *cache.CacheConfig
+	entityPAutoEmbedService func() *entity.AutoEmbedService
+	entityPBaseStats func() *entity.BaseStats
+	entityPMixedEmbedService func() *entity.MixedEmbedService
 	configNewConfig func() *config.Config
 	configNewDbDsn func() config.Dsn
-	configNewRedisDsn func() config.Dsn
+	entityTBaseStats func() entity.BaseStats
+	entityNewCountable func() entity.Countable
 	entityNewOrderRepo func() *entity.OrderRepo
+	entityNewPingable func() entity.Pingable
 	entityNewUserRepo func() *entity.UserRepo
 	eventNewComplexEvent func() event.ComplexEvent
 	eventNewHandlerFunc func() event.HandlerFunc
 	eventNewNotifyChan func() event.NotifyChan
 	handlerNewHTTPServer func() *handler.HTTPServer
+	handlerNewSettings func() *handler.Settings
 	handlerAdminStatsNew func() *handlerAdminStats.Handler
 	handlerDispatcherNew func() *handlerDispatcher.Handler
 	handlerMetricsNew func() *handlerMetrics.Handler
@@ -71,6 +79,35 @@ type DI struct {
 func NewDI() di.DI {
 	di := &DI{}
 
+	di.cachePCacheConfig = sync.OnceValue(func() *cache.CacheConfig {
+		return &cache.CacheConfig{
+			Config: di.configNewConfig(),
+			Logger: di.loggerNewLogger(),
+		}
+	})
+
+	di.entityPAutoEmbedService = sync.OnceValue(func() *entity.AutoEmbedService {
+		return &entity.AutoEmbedService{
+			Pingable: di.entityNewPingable(),
+			Countable: di.entityNewCountable(),
+			BaseStats: di.entityTBaseStats(),
+		}
+	})
+
+	di.entityPBaseStats = sync.OnceValue(func() *entity.BaseStats {
+		return &entity.BaseStats{
+		}
+	})
+
+	di.entityPMixedEmbedService = sync.OnceValue(func() *entity.MixedEmbedService {
+		return &entity.MixedEmbedService{
+			Storage: di.entityNewPingable(),
+			Pingable: di.entityNewPingable(),
+			Countable: di.entityNewCountable(),
+			BaseStats: di.entityPBaseStats(),
+		}
+	})
+
 	di.configNewConfig = sync.OnceValue(func() *config.Config {
 		return config.NewConfig()
 	})
@@ -81,10 +118,13 @@ func NewDI() di.DI {
 		)
 	})
 
-	di.configNewRedisDsn = sync.OnceValue(func() config.Dsn {
-		return config.NewRedisDsn(
-			di.configNewConfig(),
-		)
+	di.entityTBaseStats = sync.OnceValue(func() entity.BaseStats {
+		return entity.BaseStats{
+		}
+	})
+
+	di.entityNewCountable = sync.OnceValue(func() entity.Countable {
+		return entity.NewCountable()
 	})
 
 	di.entityNewOrderRepo = sync.OnceValue(func() *entity.OrderRepo {
@@ -92,6 +132,10 @@ func NewDI() di.DI {
 			di.storageNewDbStorageEntityOrderInt(),
 			di.storageNewIntEntityOrder(),
 		)
+	})
+
+	di.entityNewPingable = sync.OnceValue(func() entity.Pingable {
+		return entity.NewPingable()
 	})
 
 	di.entityNewUserRepo = sync.OnceValue(func() *entity.UserRepo {
@@ -115,6 +159,8 @@ func NewDI() di.DI {
 
 	di.handlerNewHTTPServer = sync.OnceValue(func() *handler.HTTPServer {
 		return handler.NewHTTPServer(
+			di.handlerNewSettings(),
+			di.cachePCacheConfig(),
 			[]handler.Handler{
 				di.handlerAdminStatsNew(),
 				di.handlerDispatcherNew(),
@@ -131,9 +177,19 @@ func NewDI() di.DI {
 		)
 	})
 
+	di.handlerNewSettings = sync.OnceValue(func() *handler.Settings {
+		return handler.NewSettings(
+			di.configNewConfig(),
+			di.loggerNewLogger(),
+		)
+	})
+
 	di.handlerAdminStatsNew = sync.OnceValue(func() *handlerAdminStats.Handler {
 		return handlerAdminStats.New(
 			[]handlerAdminStats.Repo{
+				di.entityPAutoEmbedService(),
+				di.entityPBaseStats(),
+				di.entityPMixedEmbedService(),
 				di.entityNewOrderRepo(),
 				di.entityNewUserRepo(),
 			},
@@ -212,7 +268,7 @@ func NewDI() di.DI {
 	di.metricsNewHealthChecker = sync.OnceValue(func() *metrics.HealthChecker {
 		d, err := metrics.NewHealthChecker(
 			di.configNewDbDsn(),
-			di.configNewRedisDsn(),
+			di.configNewDbDsn(),
 			di.metricsNewPort(),
 		)
 		if err != nil {
@@ -243,7 +299,7 @@ func NewDI() di.DI {
 
 	di.storageNewRedisConnection = sync.OnceValue(func() *storage.RedisConnection {
 		return storage.NewRedisConnection(
-			di.configNewRedisDsn(),
+			di.configNewDbDsn(),
 		)
 	})
 

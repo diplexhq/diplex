@@ -4,4 +4,5 @@ package parser
 // Declared locally — each consumer defines exactly what it needs.
 type Config interface {
 	Module() string
+	AutoProvider() bool
 }

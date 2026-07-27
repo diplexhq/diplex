@@ -8,6 +8,7 @@ type Config interface {
 	OutputDir() string
 	Module() string
 	ScanDirs() []string
+	AutoProvider() bool
 }
 
 type providerIndex struct {

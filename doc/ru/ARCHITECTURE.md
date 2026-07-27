@@ -104,6 +104,41 @@ type parseState struct {
 - Generic receivers производят `[T]` suffixes и type aliases
 - `RealType: true` — concrete типы vs. interface declarations
 
+#### Автопровайдеры (`parse_auto_provider.go` + `filter_auto_providers.go`)
+
+При включённом `-autoProvider` парсер сканирует все структуры на наличие экспортированных полей. Создаётся синтетический `Provider` для каждой экспортируемой структуры. Генерируются оба варианта — указатель и значение:
+
+| Поле | Значение |
+|------|----------|
+| `ID` | `pkg.TypeName` (одинаковый для обоих вариантов) |
+| `Result` | `pkg.TypeName` (значение) или `*pkg.TypeName` (указатель) |
+| `ResultName` | Локальное имя структуры (например, `UserRepo`) |
+| `Arguments` | Типы всех экспортированных + встроенных полей |
+| `ArgNames` | Имена экспортированных + встроенных полей |
+| `AutoProvider` | `true` |
+Автопровайдеры регистрируются в `state.providers` во время парсинга. После завершения парсинга `filterAutoProviders()` удаляет автопровайдеры, которые конфликтуют с явными провайдерами (тот же `Result` тип).
+**Обнаружение коллизий**: строит O(1) map типов `Result` явных провайдеров. Нерезолвенные зависимости автопровайдера паникуют на этапе разрешения — тот же механизм, что и для обычных провайдеров (`find_providers.go:34`).
+
+**Сбор полей**:
+- Учитываются только экспортированные поля (с заглавной буквы)
+- Встроенные поля (анонимные, без имён) включаются — как структурные типы, так и интерфейсы. Struct embeds разрешаются по типу (value или pointer), interfaces — по совпадению методов
+- Все экспортированные поля включаются — встроенные и именованные это разные ключи в struct literal, дедупликация по типу не применяется
+
+Пример:
+
+```go
+type DBSettings struct {
+    DSN    string       // unexported -> пропускается
+    Config *config.Config // exported -> зависимость
+    Logger logger.Logger  // exported -> зависимость
+}
+```
+
+Генерирует провайдер с:
+- Result: `*pkg.DBSettings`
+- Arguments: `[*config.Config, logger.Logger]`
+- ArgNames: `[Config, Logger]`
+
 #### Type Aliases (`parse_type_aliases.go` + `resolve_aliases.go`)
 
 - `type X = Y` declarations populate `state.typeAliases`

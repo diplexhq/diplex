@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/diplexhq/diplex/internal/utils"
@@ -59,7 +60,9 @@ func (dig *Generator) renderFacade(out io.Writer, name string, tmplData tmplData
 }
 
 func (dig *Generator) renderProvider(out io.Writer, name string, tmplData tmplData) {
-	tmpl := utils.Must(template.New("provider").Parse(providerTmpl))
+	tmpl := utils.Must(template.New("provider").Funcs(template.FuncMap{
+		"hasPrefix": strings.HasPrefix,
+	}).Parse(providerTmpl))
 	utils.NoErr(tmpl.Execute(out, struct {
 		Name      string
 		FacadePkg string

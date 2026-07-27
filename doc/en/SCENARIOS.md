@@ -30,6 +30,74 @@ Files: `internal/tests/config/config.go:17`, `internal/tests/logger/logger.go:16
 
 Files: `internal/tests/config/config.go:25,29`, `internal/tests/storage/redis_storage.go:9`, `internal/tests/storage/db_storage.go:11`
 
+## 2b. Auto-Provider: struct field injection
+
+When `-autoProvider` is enabled, exported structs become providers without `New*()` functions, regardless of field count. The struct's exported field types become constructor arguments.
+
+| Source | di.go field | Line | Dependencies |
+|--------|------------|------|-------------|
+| `cache.CacheConfig{Config *config.Config, Logger logger.Logger}` | `cacheCacheConfig` | L77 | `configNewConfig`, `loggerNewLogger` |
+| `handler.Settings{Config *config.Config, Logger logger.Logger}` | `handlerNewSettings` | L136 | `configNewConfig`, `loggerNewLogger` (explicit `NewSettings`) |
+
+Generated code for auto-provider (no explicit `New*` function):
+
+```go
+di.cacheCacheConfig = sync.OnceValue(func() *cache.CacheConfig {
+    return &cache.CacheConfig{
+        Config: di.configNewConfig(),
+        Logger: di.loggerNewLogger(),
+    }
+})
+```
+
+Generated code for explicit provider (takes priority over auto-provider):
+
+```go
+di.handlerNewSettings = sync.OnceValue(func() *handler.Settings {
+    return handler.NewSettings(
+        di.configNewConfig(),
+        di.loggerNewLogger(),
+    )
+})
+```
+
+Files: `internal/tests/cache/config.go:9`, `internal/tests/handler/settings.go:12`
+## 2c. Auto-Provider: embedded struct fields
+
+Auto-providers support embedded (anonymous) struct fields as dependencies. Both value and pointer embeds are resolved: the resolver picks the matching provider (value provider for `BaseStats`, pointer provider for `*BaseStats`). Empty structs (0 fields) also generate auto-providers for both pointer and value types.
+
+| Source | di.go field | Line | Dependencies |
+|--------|------------|------|-------------|
+| `entity.AutoEmbedService{Pingable, Countable, BaseStats}` (all embedded) | `entityAutoEmbedService` | L181 | `entityNewPingable`, `entityNewCountable`, `entityBaseStatsValue` |
+| `entity.MixedEmbedService{Pingable, Storage Pingable, Countable, *BaseStats}` (mixed named + embedded) | `entityMixedEmbedService` | L187 | `entityNewPingable` (both `Pingable` and `Storage` → same provider), `entityNewCountable`, `entityBaseStats` (pointer) |
+
+Generated code:
+
+```go
+di.entityAutoEmbedService = sync.OnceValue(func() *entity.AutoEmbedService {
+    return &entity.AutoEmbedService{
+        Pingable:  di.entityNewPingable(),
+        Countable: di.entityNewCountable(),
+        BaseStats: di.entityBaseStatsValue(),
+    }
+})
+
+di.entityMixedEmbedService = sync.OnceValue(func() *entity.MixedEmbedService {
+    return &entity.MixedEmbedService{
+        Storage:   di.entityNewPingable(),
+        Pingable:  di.entityNewPingable(),
+        Countable: di.entityNewCountable(),
+        BaseStats: di.entityBaseStats(),
+    }
+})
+```
+
+- `AutoEmbedService` embeds `BaseStats` (value type) → resolver selects `entityBaseStatsValue()` provider.
+- `MixedEmbedService` embeds `*BaseStats` (pointer type) → resolver selects `entityBaseStats()` provider.
+- `MixedEmbedService` has both embedded `Pingable` and named `Storage Pingable` → both included as separate struct literal fields, both resolve to the same `entityNewPingable()` provider.
+
+Files: `internal/tests/entity/auto_embed.go:11-15` (`AutoEmbedService`), `internal/tests/entity/auto_embed.go:20-25` (`MixedEmbedService`), `internal/tests/entity/auto_embed.go:4-7` (`BaseStats`)
+
 ### DSN Resolution by Name
 
 `metrics.NewHealthChecker(dbDsn, redisDsn config.Dsn, port Port)` — two `config.Dsn` params resolved by parameter name matching to provider result names:

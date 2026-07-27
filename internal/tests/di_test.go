@@ -16,11 +16,12 @@ import (
 )
 
 type stubConfig struct {
-	scanDirs    []string
-	skipPattern *regexp.Regexp
-	diDirs      []string
-	outputDir   string
-	module      string
+	scanDirs     []string
+	skipPattern  *regexp.Regexp
+	diDirs       []string
+	outputDir    string
+	module       string
+	autoProvider bool
 }
 
 func (s *stubConfig) ScanDirs() []string          { return s.scanDirs }
@@ -28,10 +29,11 @@ func (s *stubConfig) SkipPattern() *regexp.Regexp { return s.skipPattern }
 func (s *stubConfig) DIDirs() []string            { return s.diDirs }
 func (s *stubConfig) OutputDir() string           { return s.outputDir }
 func (s *stubConfig) Module() string              { return s.module }
+func (s *stubConfig) AutoProvider() bool          { return s.autoProvider }
 
 // expectedHash — SHA-256 hash of the generated di.go.
 // To update after generator changes: `sha256sum internal/tests/generated/diplex/di.go`.
-const expectedHash = "50840a4e9f82bf728c17d42040fee669a22cb894b8e7d688f27ea3eada3bbb0a"
+const expectedHash = "b113561461c8a3a677e0d2995d5e27f5bbe44720cdc121eaa7e3a04d306ffe7f"
 
 // TestDI — full DI pipeline: scan → parse → resolve → generate + hash verification.
 // If generation logic changes, the test fails — update expectedHash constant.
@@ -44,11 +46,12 @@ func TestDI(t *testing.T) {
 	defer func() { _ = os.Chdir(orig) }()
 
 	cfg := &stubConfig{
-		scanDirs:    []string{"internal/tests"},
-		skipPattern: regexp.MustCompile(`(internal\/generated\/diplex|_test\.go|_mock\.go)$`),
-		diDirs:      []string{"internal/tests/di"},
-		outputDir:   "internal/tests/generated/diplex",
-		module:      "github.com/diplexhq/diplex",
+		scanDirs:     []string{"internal/tests"},
+		skipPattern:  regexp.MustCompile(`(internal\/tests\/generated\/diplex|_test\.go|_mock\.go)$`),
+		diDirs:       []string{"internal/tests/di"},
+		outputDir:    "internal/tests/generated/diplex",
+		module:       "github.com/diplexhq/diplex",
+		autoProvider: true,
 	}
 	log := logger.Noop{}
 
@@ -108,11 +111,12 @@ func BenchmarkResolve(b *testing.B) {
 	defer func() { _ = os.Chdir(orig) }()
 
 	cfg := &stubConfig{
-		scanDirs:    []string{"internal/tests"},
-		skipPattern: regexp.MustCompile(`(internal\/generated\/diplex|_test\.go|_mock\.go)$`),
-		diDirs:      []string{"internal/tests/di"},
-		outputDir:   b.TempDir(),
-		module:      "github.com/diplexhq/diplex",
+		scanDirs:     []string{"internal/tests"},
+		skipPattern:  regexp.MustCompile(`(internal\/generated\/diplex|_test\.go|_mock\.go)$`),
+		diDirs:       []string{"internal/tests/di"},
+		outputDir:    b.TempDir(),
+		module:       "github.com/diplexhq/diplex",
+		autoProvider: true,
 	}
 
 	log := logger.Noop{}
@@ -135,11 +139,12 @@ func BenchmarkGenerate(b *testing.B) {
 	defer func() { _ = os.Chdir(orig) }()
 
 	cfg := &stubConfig{
-		scanDirs:    []string{"internal/tests"},
-		skipPattern: regexp.MustCompile(`(internal\/generated\/diplex|_test\.go|_mock\.go)$`),
-		diDirs:      []string{"internal/tests/di"},
-		outputDir:   "internal/tests/generated/diplex",
-		module:      "github.com/diplexhq/diplex",
+		scanDirs:     []string{"internal/tests"},
+		skipPattern:  regexp.MustCompile(`(internal\/generated\/diplex|_test\.go|_mock\.go)$`),
+		diDirs:       []string{"internal/tests/di"},
+		outputDir:    "internal/tests/generated/diplex",
+		module:       "github.com/diplexhq/diplex",
+		autoProvider: true,
 	}
 
 	log := logger.Noop{}
@@ -162,11 +167,12 @@ func BenchmarkTotal(b *testing.B) {
 	defer func() { _ = os.Chdir(orig) }()
 
 	cfg := &stubConfig{
-		scanDirs:    []string{"internal/tests"},
-		skipPattern: regexp.MustCompile(`(internal\/generated\/diplex|_test\.go|_mock\.go)$`),
-		diDirs:      []string{"internal/tests/di"},
-		outputDir:   "internal/tests/generated/diplex",
-		module:      "github.com/diplexhq/diplex",
+		scanDirs:     []string{"internal/tests"},
+		skipPattern:  regexp.MustCompile(`(internal\/generated\/diplex|_test\.go|_mock\.go)$`),
+		diDirs:       []string{"internal/tests/di"},
+		outputDir:    "internal/tests/generated/diplex",
+		module:       "github.com/diplexhq/diplex",
+		autoProvider: true,
 	}
 
 	log := logger.Noop{}

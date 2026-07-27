@@ -11,8 +11,8 @@ import (
 // runs compareParams to confirm exact match with constraints.
 func (res *Resolver) findProvidersByType(wanted domain.Parameter, index map[string][]*domain.Provider) []*domain.Provider {
 	candidates := index[res.normalizeGenericParameter(string(wanted))]
-	providers := make([]*domain.Provider, 0, len(candidates))
 
+	providers := make([]*domain.Provider, 0, len(candidates))
 	for _, candidate := range candidates {
 		constraints := maps.Clone(candidate.Generic)
 		if constraints == nil {

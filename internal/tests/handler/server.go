@@ -1,6 +1,10 @@
 package handler
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/diplexhq/diplex/internal/tests/cache"
+)
 
 type Handler interface {
 	Path() string
@@ -10,12 +14,16 @@ type Handler interface {
 type HTTPServer struct {
 	mux      *http.ServeMux
 	handlers []Handler
+	settings *Settings
+	cacheCfg *cache.CacheConfig
 }
 
-func NewHTTPServer(handlers []Handler) *HTTPServer {
+func NewHTTPServer(settings *Settings, cacheCfg *cache.CacheConfig, handlers []Handler) *HTTPServer {
 	return &HTTPServer{
 		mux:      http.NewServeMux(),
 		handlers: handlers,
+		settings: settings,
+		cacheCfg: cacheCfg,
 	}
 }
 

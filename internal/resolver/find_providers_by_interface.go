@@ -67,7 +67,55 @@ func (res *Resolver) findProvidersByInterface(wanted domain.Parameter, parsedDat
 		providers = append(providers, res.resolveProvider(candidate, providerConstraints)...)
 	}
 
-	return providers
+	return dedupAutoProviders(providers)
+}
+
+// dedupAutoProviders removes duplicate auto-provider variants for the same base type,
+// preferring the pointer variant over the value variant when both exist.
+func dedupAutoProviders(providers []*domain.Provider) []*domain.Provider {
+	byType := make(map[string]*domain.Provider)
+
+	for _, p := range providers {
+		if !p.AutoProvider {
+			continue
+		}
+
+		baseType := string(p.Result)
+		if len(baseType) > 0 && baseType[0] == '*' {
+			baseType = baseType[1:]
+		}
+
+		existing, ok := byType[baseType]
+		if !ok {
+			byType[baseType] = p
+			continue
+		}
+		// Prefer pointer over value.
+		if len(existing.Result) > 0 && existing.Result[0] == '*' {
+			continue // existing is pointer, keep it
+		}
+
+		byType[baseType] = p // replace value with pointer
+	}
+
+	result := make([]*domain.Provider, 0, len(providers))
+	for _, p := range providers {
+		if !p.AutoProvider {
+			result = append(result, p)
+			continue
+		}
+
+		baseType := string(p.Result)
+		if len(baseType) > 0 && baseType[0] == '*' {
+			baseType = baseType[1:]
+		}
+
+		if byType[baseType] == p {
+			result = append(result, p)
+		}
+	}
+
+	return result
 }
 
 // methodMatches checks if all methods of the provider interface match the needed interface.

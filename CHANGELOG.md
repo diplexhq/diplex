@@ -5,6 +5,16 @@
 ### Doc Fixes
 - small updates
 
+## [2.1.0] - 2026-07-27
+
+### Features
+
+- **Auto-provider scanning** — automatic DI provider generation from exported structs with 2+ fields. Both pointer (`*StructName`) and value (`StructName`) variants are registered. Named fields and embedded (anonymous) fields are collected as constructor arguments. Enabled via `-autoProvider` CLI flag.
+- **Embed type resolution** — embedded fields are resolved by type name (for anonymous interfaces/structs) or field name (for named fields). Pointer embeds unwrapped automatically.
+- **Explicit provider priority** — when a struct has a matching `New*` function, the explicit provider takes precedence and the auto-provider is filtered out during resolution.
+- **Embedded interface guard** — structs containing embedded interfaces are skipped, since Go cannot zero-initialize anonymous interfaces in struct literals.
+- **Auto-provider deduplication** — when both `*T` and `T` variants exist, the resolver prefers the pointer variant for interface-bound dependencies.
+
 ## [2.0.0] - 2026-07-18
 
 ### Breaking Changes

@@ -11,7 +11,17 @@ func New{{ .Name }}() {{ .FacadePkg }} {
 {{- range .Providers }}
 
 	di.{{ .Field }} = sync.OnceValue(func() {{ .Result }} {
-{{- if .Error }}
+{{- if .AutoProvider }}
+{{- if hasPrefix .Result "*" }}
+		return &{{ .Call }}{
+{{- else }}
+		return {{ .Call }}{
+{{- end }}
+{{- range .Args }}
+			{{ .Name }}: di.{{ index .Providers 0 }}(),
+{{- end }}
+		}
+{{- else if .Error }}
 		d, err := {{ .Call }}({{ template "args" . }})
 		if err != nil {
 			panic(err.Error())

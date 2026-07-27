@@ -30,6 +30,74 @@
 
 Файлы: `internal/tests/config/config.go:25,29`, `internal/tests/storage/redis_storage.go:9`, `internal/tests/storage/db_storage.go:11`
 
+## 2b. Автопровайдер: инъекция через поля структуры
+
+При включённом `-autoProvider` экспортируемые структуры становятся провайдерами без функций `New*()` независимо от количества полей. Типы экспортированных полей структуры становятся аргументами конструктора.
+
+| Источник | di.go поле | Строка | Зависимости |
+|----------|-----------|--------|-------------|
+| `cache.CacheConfig{Config *config.Config, Logger logger.Logger}` | `cacheCacheConfig` | L77 | `configNewConfig`, `loggerNewLogger` |
+| `handler.Settings{Config *config.Config, Logger logger.Logger}` | `handlerNewSettings` | L136 | `configNewConfig`, `loggerNewLogger` (явный `NewSettings`) |
+
+Сгенерированный код для автопровайдера (нет явной `New*` функции):
+
+```go
+di.cacheCacheConfig = sync.OnceValue(func() *cache.CacheConfig {
+    return &cache.CacheConfig{
+        Config: di.configNewConfig(),
+        Logger: di.loggerNewLogger(),
+    }
+})
+```
+
+Сгенерированный код для явного провайдера (имеет приоритет над автопровайдером):
+
+```go
+di.handlerNewSettings = sync.OnceValue(func() *handler.Settings {
+    return handler.NewSettings(
+        di.configNewConfig(),
+        di.loggerNewLogger(),
+    )
+})
+```
+
+Файлы: `internal/tests/cache/config.go:9`, `internal/tests/handler/settings.go:12`
+## 2c. Автопровайдер: встроенные поля структур
+
+Автопровайдеры поддерживают встроенные (анонимные) поля структур как зависимости. Ресолвер выбирает подходящего провайдера по типу (value-провайдер для `BaseStats`, pointer-провайдер для `*BaseStats`). Пустые структуры (0 полей) также генерируют автопровайдеры для обоих типов.
+
+| Источник | di.go поле | Строка | Зависимости |
+|----------|-----------|--------|-------------|
+| `entity.AutoEmbedService{Pingable, Countable, BaseStats}` (все встроенные) | `entityAutoEmbedService` | L181 | `entityNewPingable`, `entityNewCountable`, `entityBaseStatsValue` |
+| `entity.MixedEmbedService{Pingable, Storage Pingable, Countable, *BaseStats}` (смешанные named + embedded) | `entityMixedEmbedService` | L187 | `entityNewPingable` (оба `Pingable` и `Storage` → один провайдер), `entityNewCountable`, `entityBaseStats` (pointer) |
+
+Сгенерированный код:
+
+```go
+di.entityAutoEmbedService = sync.OnceValue(func() *entity.AutoEmbedService {
+    return &entity.AutoEmbedService{
+        Pingable:  di.entityNewPingable(),
+        Countable: di.entityNewCountable(),
+        BaseStats: di.entityBaseStatsValue(),
+    }
+})
+
+di.entityMixedEmbedService = sync.OnceValue(func() *entity.MixedEmbedService {
+    return &entity.MixedEmbedService{
+        Storage:   di.entityNewPingable(),
+        Pingable:  di.entityNewPingable(),
+        Countable: di.entityNewCountable(),
+        BaseStats: di.entityBaseStats(),
+    }
+})
+```
+
+- `AutoEmbedService` embeds `BaseStats` (value type) → ресолвер выбирает провайдер `entityBaseStatsValue()`.
+- `MixedEmbedService` embeds `*BaseStats` (pointer type) → ресолвер выбирает провайдер `entityBaseStats()`.
+- `MixedEmbedService` имеет и встроенный `Pingable`, и именованный `Storage Pingable` → оба включены как отдельные поля, оба разрешаются в один провайдер `entityNewPingable()`.
+
+Файлы: `internal/tests/entity/auto_embed.go:11-15` (`AutoEmbedService`), `internal/tests/entity/auto_embed.go:20-25` (`MixedEmbedService`), `internal/tests/entity/auto_embed.go:4-7` (`BaseStats`)
+
 ### Разрешение DSN по имени
 
 `metrics.NewHealthChecker(dbDsn, redisDsn config.Dsn, port Port)` — два параметра типа `config.Dsn` разрешаются по имени параметра через именованный результат провайдера:

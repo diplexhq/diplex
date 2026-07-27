@@ -21,13 +21,14 @@ var moduleRe = regexp.MustCompile(`^module\s+(\S+)`)
 // Config holds parsed CLI flags and runtime settings.
 // Simple fields — narrow interfaces are declared at the point of use.
 type Config struct {
-	scanDirs    []string
-	outputDir   string
-	skipPattern *regexp.Regexp
-	module      string
-	silent      bool
-	verbose     bool
-	diDirs      []string
+	scanDirs     []string
+	outputDir    string
+	skipPattern  *regexp.Regexp
+	module       string
+	silent       bool
+	verbose      bool
+	diDirs       []string
+	autoProvider bool
 }
 
 // NewConfig parses CLI flags and returns a populated Config struct.
@@ -43,6 +44,7 @@ func NewConfig() *Config {
 		fmt.Fprintf(os.Stderr, "  -module string\n        module path (overrides go.mod)\n")
 		fmt.Fprintf(os.Stderr, "  -v    verbose output\n")
 		fmt.Fprintf(os.Stderr, "  -s    silent mode\n")
+		fmt.Fprintf(os.Stderr, "  -autoProvider   enable auto-provider scanning (struct field injection)\n")
 	}
 
 	scanDirs := flag.String("scan", defaultScanDir, "comma-separated directories to scan")
@@ -52,6 +54,7 @@ func NewConfig() *Config {
 	silent := flag.Bool("s", false, "silent mode")
 	moduleFlag := flag.String("module", "", "module path (overrides go.mod)")
 	diDirs := flag.String("di", defaultDIDirs, "comma-separated directories with DI facade interfaces")
+	autoProvider := flag.Bool("autoProvider", false, "enable auto-provider scanning (struct field injection)")
 
 	flag.Parse()
 
@@ -68,13 +71,14 @@ func NewConfig() *Config {
 	}
 
 	return &Config{
-		scanDirs:    strings.Split(*scanDirs, ","),
-		outputDir:   *outputDir,
-		skipPattern: regexp.MustCompile(*skipPattern),
-		module:      module,
-		silent:      *silent,
-		verbose:     *verbose,
-		diDirs:      strings.Split(*diDirs, ","),
+		scanDirs:     strings.Split(*scanDirs, ","),
+		outputDir:    *outputDir,
+		skipPattern:  regexp.MustCompile(*skipPattern),
+		module:       module,
+		silent:       *silent,
+		verbose:      *verbose,
+		diDirs:       strings.Split(*diDirs, ","),
+		autoProvider: *autoProvider,
 	}
 }
 
@@ -113,6 +117,9 @@ func (c *Config) Silent() bool { return c.silent }
 
 // Verbose reports whether verbose output is enabled.
 func (c *Config) Verbose() bool { return c.verbose }
+
+// AutoProvider reports whether auto-provider scanning is enabled.
+func (c *Config) AutoProvider() bool { return c.autoProvider }
 
 // DIDirs returns directories with DI facade interfaces.
 func (c *Config) DIDirs() []string { return c.diDirs }

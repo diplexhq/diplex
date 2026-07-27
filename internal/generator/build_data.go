@@ -66,14 +66,16 @@ var stdPkgs = map[string]struct{}{
 }
 
 type tmplDataProvider struct {
-	Field  string
-	Call   string
-	Args   []tmplDataProviderArg
-	Result string
-	Error  bool
+	Field        string
+	Call         string
+	Args         []tmplDataProviderArg
+	Result       string
+	Error        bool
+	AutoProvider bool
 }
 
 type tmplDataProviderArg struct {
+	Name           string
 	Type           string
 	CollectionType string
 	Providers      []string
@@ -99,6 +101,7 @@ type buildData struct {
 	pkgAlias     map[string]string
 	providerList []*domain.Provider
 	resolvedData domain.ResolvedData
+	fields       map[domain.ProviderID]string
 	tmplData     tmplData
 }
 
@@ -247,31 +250,55 @@ func (dig *Generator) buildDataProvider(data *buildData) {
 		return data.providerList[i].ID < data.providerList[j].ID
 	})
 
+	data.fields = make(map[domain.ProviderID]string)
+	used := make(map[string]struct{})
+
+	for _, provider := range data.providerList {
+		name := provider.Name
+		if provider.AutoProvider {
+			if provider.Result[0] == '*' {
+				name = "P" + name
+			} else {
+				name = "T" + name
+			}
+		}
+
+		data.fields[provider.ID] = dig.idUniq(utils.SanitizeIdent(data.pkgAlias[provider.Pkg]+dig.replacePkgAlias(data.pkgAlias, name)), used)
+	}
+
 	data.tmplData.providers = make([]tmplDataProvider, 0, len(data.providerList))
 	for _, provider := range data.providerList {
 		pkgAlias := data.pkgAlias[provider.Pkg]
-		name := dig.replacePkgAlias(data.pkgAlias, provider.Name)
+
 		data.tmplData.providers = append(data.tmplData.providers, tmplDataProvider{
-			Field:  utils.SanitizeIdent(pkgAlias + name),
-			Call:   pkgAlias + "." + name,
-			Args:   dig.buildDataProviderArgs(data, provider.Arguments, data.resolvedData.ResolvedProviders[provider.ID].ArgumentProviders),
-			Error:  provider.Error,
-			Result: dig.replacePkgAlias(data.pkgAlias, string(provider.Result)),
+			Field:        data.fields[provider.ID],
+			Call:         pkgAlias + "." + dig.replacePkgAlias(data.pkgAlias, provider.Name),
+			Args:         dig.buildDataProviderArgs(data, provider),
+			Error:        provider.Error,
+			Result:       dig.replacePkgAlias(data.pkgAlias, string(provider.Result)),
+			AutoProvider: provider.AutoProvider,
 		})
 	}
 }
 
-func (dig *Generator) buildDataProviderArgs(data *buildData, arguments []domain.Parameter, argumentProviders []domain.ProviderCollection) []tmplDataProviderArg {
-	if len(arguments) == 0 {
+func (dig *Generator) buildDataProviderArgs(data *buildData, provider *domain.Provider) []tmplDataProviderArg {
+	if len(provider.Arguments) == 0 {
 		return nil
 	}
 
-	res := make([]tmplDataProviderArg, 0, len(arguments))
-	for i, arg := range arguments {
+	res := make([]tmplDataProviderArg, 0, len(provider.Arguments))
+	for i, arg := range provider.Arguments {
+		argName := ""
+		if i < len(provider.ArgNames) {
+			argName = provider.ArgNames[i]
+		}
+
+		providerCollection := data.resolvedData.ResolvedProviders[provider.ID].ArgumentProviders[i]
 		res = append(res, tmplDataProviderArg{
+			Name:           argName,
 			Type:           dig.replacePkgAlias(data.pkgAlias, string(arg)),
-			CollectionType: argumentProviders[i].CollectionType,
-			Providers:      dig.buildDataTmplProvider(data, argumentProviders[i]),
+			CollectionType: providerCollection.CollectionType,
+			Providers:      dig.buildDataTmplProvider(data, providerCollection),
 		})
 	}
 
@@ -337,8 +364,7 @@ func (dig *Generator) buildDataFacade(data *buildData) {
 func (dig *Generator) buildDataTmplProvider(data *buildData, providers domain.ProviderCollection) []string {
 	res := make([]string, 0, len(providers.Providers))
 	for _, provider := range providers.Providers {
-		field := data.pkgAlias[provider.Pkg] + dig.replacePkgAlias(data.pkgAlias, provider.Name)
-		res = append(res, utils.SanitizeIdent(field))
+		res = append(res, data.fields[provider.ID])
 	}
 
 	return res

@@ -32,10 +32,32 @@ func (fp *Parser) parseFile(
 				fp.parseInterface(d, imports, pkg, state)
 				fp.parseTypeAliases(d, imports, pkg, state)
 				fp.parseStructEmbeds(d, imports, pkg, state)
+				fp.parseAutoProviders(d, imports, pkg, state)
 			}
 		case *ast.FuncDecl:
 			fp.parseReceiver(d, imports, pkg, state)
 			fp.parseProvider(d, imports, pkg, state)
 		}
+	}
+}
+
+// parseAutoProviders scans type declarations for structs and registers auto-providers.
+func (fp *Parser) parseAutoProviders(genDecl *ast.GenDecl, imports map[string]string, pkg string, state *parseState) {
+	if !fp.cfg.AutoProvider() {
+		return
+	}
+
+	for _, spec := range genDecl.Specs {
+		typeSpec, ok := spec.(*ast.TypeSpec)
+		if !ok {
+			continue
+		}
+
+		structType, ok := typeSpec.Type.(*ast.StructType)
+		if !ok || structType.Fields == nil {
+			continue
+		}
+
+		fp.parseAutoProvider(typeSpec, structType, imports, pkg, state)
 	}
 }

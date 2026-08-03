@@ -97,8 +97,7 @@ func (fp *Parser) parseAutoProvider(typeSpec *ast.TypeSpec, structType *ast.Stru
 	}
 
 	state.mu.Lock()
-	state.providers[domain.ProviderID(pointerType)] = provider
-	state.providers[domain.ProviderID(typeName)] = valueProvider
+	state.providers = append(state.providers, provider, valueProvider)
 	state.mu.Unlock()
 
 	fp.log.Debug("auto-provider found", "id", valueProvider, "fields", len(fields))

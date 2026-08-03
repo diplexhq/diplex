@@ -70,7 +70,7 @@ func (fp *Parser) parseProvider(funcDecl *ast.FuncDecl, imports map[string]strin
 	}
 
 	state.mu.Lock()
-	state.providers[provider.ID] = provider
+	state.providers = append(state.providers, provider)
 	state.mu.Unlock()
 
 	fp.log.Debug("provider found", "id", provider.ID, "result", results[0])

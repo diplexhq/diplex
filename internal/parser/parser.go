@@ -42,7 +42,7 @@ type parseState struct {
 // newState creates a new parseState with initialized maps and default type aliases.
 func (fp *Parser) newState() *parseState {
 	return &parseState{
-		providers:  make(domain.Providers),
+		providers:  make(domain.Providers, 0, 128),
 		interfaces: make(domain.Interfaces),
 		embeds:     make(map[domain.InterfaceID][]domain.InterfaceID),
 		typeAliases: map[string]string{

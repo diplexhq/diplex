@@ -16,7 +16,7 @@ type (
 	MethodMap map[FunctionName]MethodContract
 
 	Interfaces map[InterfaceID]InterfaceInfo
-	Providers  map[ProviderID]*Provider
+	Providers  []*Provider
 )
 
 // InterfaceInfo holds the methods for an interface or a concrete type implementation.

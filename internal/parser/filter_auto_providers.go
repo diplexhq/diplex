@@ -17,14 +17,17 @@ func (fp *Parser) filterAutoProviders(state *parseState) {
 	}
 
 	// Remove auto-providers that collide with an explicit provider.
-	for id, p := range state.providers {
-		if !p.AutoProvider {
+	for idx := 0; idx < len(state.providers); idx++ {
+		if !state.providers[idx].AutoProvider {
+			continue
+		} else if _, collision := explicitResults[state.providers[idx].Result]; !collision {
 			continue
 		}
 
-		if _, collision := explicitResults[p.Result]; collision {
-			delete(state.providers, id)
-			fp.log.Debug("auto-provider skipped (explicit provider exists)", "id", id, "result", p.Result)
-		}
+		fp.log.Debug("auto-provider skipped (explicit provider exists)", "id", state.providers[idx].ID, "result", state.providers[idx].Result)
+
+		state.providers[idx] = state.providers[0]
+		state.providers = state.providers[1:len(state.providers)]
+		idx--
 	}
 }

@@ -17,15 +17,13 @@ func (res *Resolver) Resolve(parsedData domain.ParsedData) domain.ResolvedData {
 	resolvedProviders := make(map[domain.ProviderID]domain.ResolvedProvider)
 
 	// Sort facade keys for deterministic resolved facade building.
-	for _, interfaceID := range utils.SortedKeys(facades) {
-		facade := facades[interfaceID]
+	for interfaceID, facade := range facades {
 		resolvedFacade := make(domain.ResolvedFacade)
 
-		for _, functionName := range utils.SortedKeys(facade.Methods) {
-			methodContract := facade.Methods[functionName]
+		for functionName, methodContract := range facade.Methods {
 			result := methodContract.Results[0]
 
-			provider := res.selectSingleProvider(providers[result], string(result), "")
+			provider := res.selectSingleProvider(providers[result], result, "")
 			if provider == nil {
 				panic(fmt.Sprintf("no single provider found for %s:%s", interfaceID, functionName))
 			}
@@ -61,7 +59,7 @@ func (res *Resolver) Resolve(parsedData domain.ParsedData) domain.ResolvedData {
 				continue
 			}
 
-			argumentProvider := res.selectSingleProvider(providerCollection, string(provider.Arguments[i]), provider.ArgNames[i])
+			argumentProvider := res.selectSingleProvider(providerCollection, provider.Arguments[i], provider.ArgNames[i])
 			if argumentProvider == nil {
 				panic(fmt.Sprintf("no single provider found for %s(%s)", arg, provider.ArgNames[i]))
 			}
@@ -95,7 +93,7 @@ func (res *Resolver) Resolve(parsedData domain.ParsedData) domain.ResolvedData {
 // matching provider ResultName against a target name.
 //
 // Returns nil if argName is empty or no unique name match is found — caller panics.
-func (res *Resolver) selectSingleProvider(collection domain.ProviderCollection, argType, argName string) *domain.Provider {
+func (res *Resolver) selectSingleProvider(collection domain.ProviderCollection, argType domain.Parameter, argName string) *domain.Provider {
 	if len(collection.Providers) == 1 {
 		return collection.Providers[0]
 	}
@@ -104,27 +102,26 @@ func (res *Resolver) selectSingleProvider(collection domain.ProviderCollection, 
 		return nil
 	}
 
-	// Prefer providers whose Result exactly matches the arg type (direct interface satisfaction)
-	// over method-matched structs (which may implement the same interface via embedding).
-	for _, p := range collection.Providers {
-		if string(p.Result) == argType {
-			return p
-		}
-	}
-
-	var matched []*domain.Provider
+	var (
+		matchedByName []*domain.Provider
+		matchedByType []*domain.Provider
+	)
 
 	for _, p := range collection.Providers {
 		if res.matchByName(p.ResultName, argName) {
-			matched = append(matched, p)
+			matchedByName = append(matchedByName, p)
+		} else if p.Result == argType {
+			matchedByType = append(matchedByType, p)
 		}
 	}
 
-	if len(matched) != 1 {
-		return nil
+	if len(matchedByName) == 1 {
+		return matchedByName[0]
+	} else if len(matchedByType) == 1 {
+		return matchedByType[0]
 	}
 
-	return matched[0]
+	return nil
 }
 
 // matchByName checks if provider's ResultName matches targetName.

@@ -3,7 +3,6 @@ package generator
 import (
 	"fmt"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/diplexhq/diplex/internal/domain"
@@ -16,7 +15,7 @@ func (dig *Generator) Generate(resolvedData domain.ResolvedData) {
 
 	used := make(map[string]struct{})
 
-	for _, facadeID := range dig.facadeIDs(resolvedData.ResolvedFacades) {
+	for facadeID := range resolvedData.ResolvedFacades {
 		name := facadeID.LocalName()
 		dig.render(
 			dig.buildData(facadeID, resolvedData),
@@ -24,17 +23,6 @@ func (dig *Generator) Generate(resolvedData domain.ResolvedData) {
 			dig.idUniq(utils.ToSnakeCase(name), used),
 		)
 	}
-}
-
-func (dig *Generator) facadeIDs(facades map[domain.InterfaceID]domain.ResolvedFacade) (facadeIDs []domain.InterfaceID) {
-	facadeIDs = make([]domain.InterfaceID, 0, len(facades))
-	for facadeID := range facades {
-		facadeIDs = append(facadeIDs, facadeID)
-	}
-
-	slices.Sort(facadeIDs)
-
-	return facadeIDs
 }
 
 func (dig *Generator) idUniq(id string, used map[string]struct{}) string {

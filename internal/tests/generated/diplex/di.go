@@ -41,6 +41,7 @@ type DI struct {
 	entityPMixedEmbedService func() *entity.MixedEmbedService
 	configNewConfig func() *config.Config
 	configNewDbDsn func() config.Dsn
+	configNewRedisDsn func() config.Dsn
 	entityTBaseStats func() entity.BaseStats
 	entityNewCountable func() entity.Countable
 	entityNewOrderRepo func() *entity.OrderRepo
@@ -114,6 +115,12 @@ func NewDI() di.DI {
 
 	di.configNewDbDsn = sync.OnceValue(func() config.Dsn {
 		return config.NewDbDsn(
+			di.configNewConfig(),
+		)
+	})
+
+	di.configNewRedisDsn = sync.OnceValue(func() config.Dsn {
+		return config.NewRedisDsn(
 			di.configNewConfig(),
 		)
 	})
@@ -268,7 +275,7 @@ func NewDI() di.DI {
 	di.metricsNewHealthChecker = sync.OnceValue(func() *metrics.HealthChecker {
 		d, err := metrics.NewHealthChecker(
 			di.configNewDbDsn(),
-			di.configNewDbDsn(),
+			di.configNewRedisDsn(),
 			di.metricsNewPort(),
 		)
 		if err != nil {
@@ -299,7 +306,7 @@ func NewDI() di.DI {
 
 	di.storageNewRedisConnection = sync.OnceValue(func() *storage.RedisConnection {
 		return storage.NewRedisConnection(
-			di.configNewDbDsn(),
+			di.configNewRedisDsn(),
 		)
 	})
 

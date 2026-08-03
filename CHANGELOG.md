@@ -1,9 +1,12 @@
 # Changelog
 
-## [2.0.1] - 2026-07-19
+## [2.1.1] - 2026-08-03
 
-### Doc Fixes
-- small updates
+### Refactors
+
+- **Providers stored as slice instead of map** — `domain.Providers` changed from `map[ProviderID]*Provider` to `[]*Provider`. All iteration points updated across parser, resolver, and generator. Eliminates need for `SortedKeys` utility which was removed from `internal/utils/string.go`.
+- **Unnecessary sorting removed** — `facadeIDs()` helper with `slices.Sort`, `utils.SortedKeys()` calls in `buildTypeIndex`, `buildInterfaceIndex`, `resolveProviders`, and `resolve` eliminated. These sorts before map population served no purpose since map iteration is always random in Go.
+- **Provider collection deduplication simplified** — `filterAutoProviders` now uses index-based iteration over slice instead of map deletion.
 
 ## [2.1.0] - 2026-07-27
 
@@ -14,6 +17,11 @@
 - **Explicit provider priority** — when a struct has a matching `New*` function, the explicit provider takes precedence and the auto-provider is filtered out during resolution.
 - **Embedded interface guard** — structs containing embedded interfaces are skipped, since Go cannot zero-initialize anonymous interfaces in struct literals.
 - **Auto-provider deduplication** — when both `*T` and `T` variants exist, the resolver prefers the pointer variant for interface-bound dependencies.
+
+## [2.0.1] - 2026-07-19
+
+### Doc Fixes
+- small updates
 
 ## [2.0.0] - 2026-07-18
 

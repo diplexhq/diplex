@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/diplexhq/diplex/internal/domain"
-	"github.com/diplexhq/diplex/internal/utils"
 )
 
 // buildTypeIndex creates a map from normalized provider Result types to their pointers.
@@ -14,8 +13,7 @@ import (
 func (res *Resolver) buildTypeIndex(parsedData domain.ParsedData) map[string][]*domain.Provider {
 	index := make(map[string][]*domain.Provider)
 
-	for _, id := range utils.SortedKeys(parsedData.Providers) {
-		provider := parsedData.Providers[id]
+	for _, provider := range parsedData.Providers {
 		key := res.normalizeGenericParameter(string(provider.Result))
 		index[key] = append(index[key], provider)
 	}
@@ -29,8 +27,7 @@ func (res *Resolver) buildTypeIndex(parsedData domain.ParsedData) map[string][]*
 func (res *Resolver) buildInterfaceIndex(parsedData domain.ParsedData) map[string][]*domain.Provider {
 	index := make(map[string][]*domain.Provider)
 
-	for _, id := range utils.SortedKeys(parsedData.Providers) {
-		provider := parsedData.Providers[id]
+	for _, provider := range parsedData.Providers {
 		// Pointer auto-providers only — avoids ambiguity between *T and T value variants.
 		if provider.AutoProvider && !strings.HasPrefix(string(provider.Result), "*") {
 			continue
@@ -38,8 +35,7 @@ func (res *Resolver) buildInterfaceIndex(parsedData domain.ParsedData) map[strin
 
 		baseResult, _ := res.extractGenericPrototype(provider)
 		if info, ok := parsedData.Interfaces[domain.InterfaceID(baseResult)]; ok {
-			for _, methodName := range utils.SortedKeys(info.Methods) {
-				contract := info.Methods[methodName]
+			for methodName, contract := range info.Methods {
 				key := res.methodKey(methodName, contract)
 				index[key] = append(index[key], provider)
 			}

@@ -32,7 +32,7 @@ func (dig *Generator) idUniq(id string, used map[string]struct{}) string {
 			break
 		}
 
-		variant = fmt.Sprintf("%s%d", variant, try)
+		variant = fmt.Sprintf("%s%d", id, try)
 	}
 
 	used[variant] = struct{}{}

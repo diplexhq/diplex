@@ -9,7 +9,7 @@ import (
 	"github.com/diplexhq/diplex/internal/utils"
 )
 
-func lookupStd(pkg string) bool {
+func (dig *Generator) lookupStd(pkg string) bool {
 	root := pkg
 	if before, _, ok := strings.Cut(pkg, "/"); ok {
 		root = before
@@ -201,7 +201,7 @@ func (dig *Generator) buildDataPkg(data *buildData) {
 		switch {
 		case strings.HasPrefix(pkg, dig.cfg.Module()):
 			local = append(local, pkg)
-		case lookupStd(pkg):
+		case dig.lookupStd(pkg):
 			standard = append(standard, pkg)
 		default:
 			others = append(others, pkg)

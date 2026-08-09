@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.2] - 2026-08-09
+
+### Refactors
+
+- **`lookupStd` moved to Generator method** — `lookupStd` changed from standalone function to `(dig *Generator) lookupStd`, allowing future access to generator context if needed. All call sites updated in `buildDataPkg`.
+- **ID uniqueness variant includes original id** — `idUniq` now uses `fmt.Sprintf("%s%d", id, try)` instead of `fmt.Sprintf("%s%d", variant, try)` for clearer collision resolution output.
+
+
 ## [2.1.1] - 2026-08-03
 
 ### Refactors

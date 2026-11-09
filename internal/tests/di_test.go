@@ -33,7 +33,7 @@ func (s *stubConfig) AutoProvider() bool          { return s.autoProvider }
 
 // expectedHash — SHA-256 hash of the generated di.go.
 // To update after generator changes: `sha256sum internal/tests/generated/diplex/di.go`.
-const expectedHash = "a9589279021b545ef12e1bc8505185d8c19b3e324df7afbda973d98dfa6e1da0"
+const expectedHash = "37d02c165e31fcafc59fa405f24503c1be2592738ec3768d8c3f5e19c938a9ff"
 
 // TestDI — full DI pipeline: scan → parse → resolve → generate + hash verification.
 // If generation logic changes, the test fails — update expectedHash constant.

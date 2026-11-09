@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0] - 2026-11-09
+
+### Features
+
+- **MIT License added** — project now distributed under the MIT License (`LICENSE`)
+- **AS IS disclaimer in generated code** — all generated `di.go` files include `// This code is provided AS IS, without warranty of any kind.` in the header
+
 ## [2.1.2] - 2026-08-09
 
 ### Refactors

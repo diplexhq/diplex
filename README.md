@@ -71,3 +71,11 @@ db := deps.DB()
 |---|---------|---------|
 | Developer Guide | [doc/en/DEVELOPER_GUIDE.md](doc/en/DEVELOPER_GUIDE.md) | [doc/ru/DEVELOPER_GUIDE.md](doc/ru/DEVELOPER_GUIDE.md) |
 | Architecture | [doc/en/ARCHITECTURE.md](doc/en/ARCHITECTURE.md) | [doc/ru/ARCHITECTURE.md](doc/ru/ARCHITECTURE.md) |
+
+## License / Лицензия
+
+This project is licensed under the [MIT License](LICENSE).
+It is distributed under the MIT license; results are provided **AS IS**, without warranty of any kind.
+
+Проект распространяется по лицензии [MIT](LICENSE).
+Результат предоставляется **«как есть»** (AS IS), без каких-либо гарантий.
